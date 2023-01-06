@@ -10,14 +10,25 @@
     "Other"
   ],
   "activationEvents": [
+    "onCommand:codfsh.runFhirFsh",
+    "onCommand:codfsh.runHapi",
     "onCommand:codfsh.runSushi"
   ],
   "main": "./dist/extension.js",
   "contributes": {
     "commands": [
       {
+        "command": "codfsh.runFhirFsh",
+        "title": "FHIR Fish the sushi to an HAPI end"
+      },
+      {
         "command": "codfsh.runSushi",
         "title": "Run Sushi"
+      },
+      {
+        "command": "codfsh.runHapi",
+        "title": "Run Hapi validator",
+        "icon": "$(play)"
       }
     ]
   },
