@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { execute } from './sushiController';
+import { execute } from './sushi/sushiController';
 
 export function activate(context: vscode.ExtensionContext) {
 	let runSushiSubscription = vscode.commands.registerCommand('codfsh.runSushi', () => {

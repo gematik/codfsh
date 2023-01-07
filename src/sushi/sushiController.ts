@@ -15,16 +15,22 @@ export function execute(context: vscode.ExtensionContext, factory?: vscode.Debug
         var path = currentFile.path;
         console.log(path.toString());
         let sushiWrapper = new SushiWrapper(path);
-        sushiWrapper.getSushiOutput();
-        let range = new vscode.Range(4, 0, 4, 100);
-        let d = new Diagnostic(range, "Testnachricht" , vscode.DiagnosticSeverity.Error);
+        vscode.window.showInformationMessage('Running Sushi...');
+        let output = sushiWrapper.getSushiOutput();
+        vscode.window.showInformationMessage('Sushi Done.');
+        output.forEach(output => {
+            console.log(output.message);
+            let d = new Diagnostic(output.range, output.message , output.severity);
+            diagnostics.push(d);
+        });
+       
 
-        diagnostics.push(d);
+        
         diagnosticCollection.set(currentFile, diagnostics);
     }
 
 
-    vscode.window.showInformationMessage('Running Sushi...');
+    
 }
 
 
