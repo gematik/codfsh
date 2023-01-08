@@ -1,24 +1,43 @@
-import { SushiOutput } from '../models/sushiOutput';
-import { SushiOutputParser } from './sushiOutputParser';
-
 
 export class SushiWrapper {
-    ressourcesFolderPath: string;
-    sushiOutputParser : SushiOutputParser;
-
-    constructor(fshFilePath: string) {
-        this.ressourcesFolderPath = this.getRessourcePath(fshFilePath);
-        this.sushiOutputParser = new SushiOutputParser();
+    public async getConsoleOutput(fshFilePath: string) : Promise<string>  {
+        return new Promise((resolve, reject) => {
+            this.getRessourcePath(fshFilePath).then((ressourcesFolderPath) => {
+                resolve(this.execShellCommand("sushi " + ressourcesFolderPath));
+            }).catch((error) => {
+                reject(error);
+            });
+        });
+    }
+    
+     private getRessourcePath(fshFilePath:string): Promise<string> {
+        return new Promise((resolve, reject) => {
+            var resPath = this.searchRessourcePath(fshFilePath, '/input/fsh');
+            if(this.isValidPath(resPath)){
+                resolve(resPath);
+            }
+            resPath = this.searchRessourcePath(fshFilePath, '/_preprocessed');
+            if(this.isValidPath(resPath)){
+                resolve(resPath);
+            }
+            reject(new Error("Unable to find folder structure expected by SUSHI for a FSH project"));
+        });
     }
 
-    private getRessourcePath(fshFilePath:string){
-        var resPath =  fshFilePath.split('/input/fsh')[0];
-        if (resPath[0] === "/")
-            {
-                resPath = resPath.substring(1);
-            }
-        console.log(resPath);
+    private searchRessourcePath(fshFilePath: string, input: string) {
+        var resPath = fshFilePath.split(input)[0];
+        if (resPath[0] === "/") {
+            resPath = resPath.substring(1);
+        }
         return resPath;
+    }
+
+    private isValidPath(resPath: string): boolean {
+        console.log(resPath)
+        if(resPath.split('/').pop() === "Resources"){
+            return true;
+        }
+        return false;
     }
 
     private execShellCommand(cmd: string) : Promise<string>{
@@ -26,19 +45,11 @@ export class SushiWrapper {
         return new Promise((resolve, reject) => {
             exec(cmd, (error: any, stdout: string, stderr: string) => {
             if (error) {
-                console.warn(error);
+                console.log(error);
+                //reject(new Error(error));
             }
-            resolve(stdout? stdout : stderr);
+            resolve(stdout);
             });
         });
     }
-   
-    public async getSushiOutput() : Promise<SushiOutput[]>  {
-        const sushiOutput =  await this.execShellCommand("sushi " + this.ressourcesFolderPath);
-        var output = this.sushiOutputParser.getParsedOutput(sushiOutput);
-        return output;
-    }
-
-   
-
 }

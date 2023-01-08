@@ -1,14 +1,9 @@
 import { DiagnosticSeverity, Range } from "vscode";
-import { SushiOutput } from "../models/sushiOutput";
+import { Diagniostic as Diagnostic } from "../models/diagnostic";
 
 export class SushiOutputParser{
 
-    public getParsedOutput(logOutput: string){
-        //console.log("parsing: " + logOutput);
-        return this.getElements(logOutput);
-    }
-
-    private getElements(logOutput: string){
+    public getDiagnostics(logOutput: string){
         const regex = /(?<severity>\w+)\s(?<message>.*)\n\s+File:\s(?<file>.*)\n\s+Line:\s(?<line_from>\d+)(\s-\s(?<line_to>\d+))?/gm;
         let m;
         let output = [] ;
@@ -27,7 +22,7 @@ export class SushiOutputParser{
                 if (m.groups?.line_to != null) {
                     lineTo = +(m.groups?.line_to) -1;
                 }
-                output.push(new SushiOutput(severityType, m.groups?.message, m.groups?.file, new Range(lineFrom,0,lineTo,200)));
+                output.push(new Diagnostic(severityType, m.groups?.message, m.groups?.file, new Range(lineFrom,0,lineTo,200)));
             }
         }
         return output;

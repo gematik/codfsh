@@ -1,13 +1,13 @@
 import { DiagnosticSeverity, Range } from "vscode";
 
 
-export class SushiOutput {
+export class Diagniostic {
+    severity: DiagnosticSeverity;
+    message: string;
+    file: string;
     range: Range;
     lineFrom: number;
     lineTo: number;
-    message: string;
-    file: string;
-    severity: DiagnosticSeverity;
 
     constructor(severity: DiagnosticSeverity, message: string, file: string, range: Range){
         this.severity = severity;
