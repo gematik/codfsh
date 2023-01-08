@@ -1,14 +1,14 @@
 import { SushiOutput } from '../models/sushiOutput';
-import { Range } from 'vscode';
 import { SushiOutputParser } from './sushiOutputParser';
-var childProcess = require('child_process');
 
 
 export class SushiWrapper {
     ressourcesFolderPath: string;
+    sushiOutputParser : SushiOutputParser;
 
     constructor(fshFilePath: string) {
         this.ressourcesFolderPath = this.getRessourcePath(fshFilePath);
+        this.sushiOutputParser = new SushiOutputParser();
     }
 
     private getRessourcePath(fshFilePath:string){
@@ -21,60 +21,24 @@ export class SushiWrapper {
         return resPath;
     }
 
-    private runScript(command: any, args: any, callback: (arg0: string, arg1: any) => void) {
-        console.log("Starting Process." + command);
-        var child = childProcess.spawn(command, args);
-    
-        var scriptOutput = "";
-    
-        child.stdout.setEncoding('utf8');
-        child.stdout.on('data', function(data: string) {
-            console.log('stdout: ' + data);
-    
-            data=data.toString();
-            scriptOutput+=data;
-        });
-    
-        child.stderr.setEncoding('utf8');
-        child.stderr.on('data', function(data: string) {
-            console.log('stderr: ' + data);
-    
-            data=data.toString();
-            scriptOutput+=data;
-        });
-    
-        child.on('close', function(code: any) {
-            callback(scriptOutput,code);
+    private execShellCommand(cmd: string) : Promise<string>{
+        const exec = require('child_process').exec;
+        return new Promise((resolve, reject) => {
+            exec(cmd, (error: any, stdout: string, stderr: string) => {
+            if (error) {
+                console.warn(error);
+            }
+            resolve(stdout? stdout : stderr);
+            });
         });
     }
-
-    private startSushi(){
-        console.log("running: sushi " + this.ressourcesFolderPath);
-        this.runScript("sushi" , [this.ressourcesFolderPath], function(output, exitCode: any) {
-       // this.runScript("ls" , ["-l"], function(output, exitCode: any) {
-            console.log("Process Finished.");
-            console.log('closing code: ' + exitCode);
-            console.log('Full output of script: ',output);
-        });
-
-
-    }
-    private startSushi2()  : SushiOutput[] {
-        const cp = require('child_process') ;
-        var sushiOutputParser = new SushiOutputParser();
-        cp.exec("sushi " + this.ressourcesFolderPath, (err: string, stdout: string, stderr: string) => {
-            let output = sushiOutputParser.getParsedOutput(stdout);
-            console.log(output[0].message);
-            return output;
-        });
-        return [];
+   
+    public async getSushiOutput() : Promise<SushiOutput[]>  {
+        const sushiOutput =  await this.execShellCommand("sushi " + this.ressourcesFolderPath);
+        var output = this.sushiOutputParser.getParsedOutput(sushiOutput);
+        return output;
     }
 
-
-    public getSushiOutput() : SushiOutput[]  {
-        return this.startSushi2();   
-        //return new SushiOutput(new Range(2,5,2,2),"Testmessage", SeverityType.error);
-
-    }
+   
 
 }

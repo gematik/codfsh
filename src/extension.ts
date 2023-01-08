@@ -1,9 +1,11 @@
 import * as vscode from 'vscode';
-import { execute } from './sushi/sushiController';
+import { SushiController } from './sushi/sushiController';
+
 
 export function activate(context: vscode.ExtensionContext) {
 	let runSushiSubscription = vscode.commands.registerCommand('codfsh.runSushi', () => {
-		execute(context);
+		let sushiController = new SushiController();
+		sushiController.execute();
 	});
 
 	let runHapiSubscription = vscode.commands.registerCommand('codfsh.runHapi', () => {

@@ -3,6 +3,8 @@ import { DiagnosticSeverity, Range } from "vscode";
 
 export class SushiOutput {
     range: Range;
+    lineFrom: number;
+    lineTo: number;
     message: string;
     file: string;
     severity: DiagnosticSeverity;
@@ -12,6 +14,8 @@ export class SushiOutput {
         this.message = message;
         this.file = file;
         this.range = range;
+        this.lineFrom = range.start.line;
+        this.lineTo = range.end.line;
     }
 
 }

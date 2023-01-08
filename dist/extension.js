@@ -13,31 +13,63 @@ module.exports = require("vscode");
 
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.execute = void 0;
+exports.SushiController = void 0;
 const vscode = __webpack_require__(1);
 const vscode_1 = __webpack_require__(1);
 const sushiWrapper_1 = __webpack_require__(3);
-function execute(context, factory) {
-    var currentFile = vscode.window.activeTextEditor?.document.uri;
-    let diagnosticCollection;
-    diagnosticCollection = vscode.languages.createDiagnosticCollection('fsh');
-    let diagnostics = Array();
-    if (currentFile) {
-        var path = currentFile.path;
-        console.log(path.toString());
-        let sushiWrapper = new sushiWrapper_1.SushiWrapper(path);
-        vscode.window.showInformationMessage('Running Sushi...');
-        let output = sushiWrapper.getSushiOutput();
-        vscode.window.showInformationMessage('Sushi Done.');
-        output.forEach(output => {
-            console.log(output.message);
-            let d = new vscode_1.Diagnostic(output.range, output.message, output.severity);
-            diagnostics.push(d);
+class SushiController {
+    execute() {
+        var currentFile = vscode.window.activeTextEditor?.document.uri;
+        let diagnosticCollection;
+        diagnosticCollection = vscode.languages.createDiagnosticCollection('fsh');
+        if (currentFile) {
+            vscode.window.showInformationMessage('Running Sushi...');
+            let sushiWrapper = new sushiWrapper_1.SushiWrapper(currentFile.path);
+            sushiWrapper.getSushiOutput().then((output) => {
+                vscode.window.showInformationMessage('Sushi Done.');
+                this.addDiagnostics(output, diagnosticCollection);
+            });
+        }
+    }
+    addDiagnostics(unfilteredOutput, diagnosticCollection) {
+        let distinctOutput = this.filterToDistinctErrorMessages(unfilteredOutput);
+        console.log(distinctOutput);
+        let distinctOutputPerFile = this.groupOutputByFile(distinctOutput);
+        for (const file in distinctOutputPerFile) {
+            if (distinctOutputPerFile.hasOwnProperty(file)) {
+                this.addDiagnosticsPerFile(distinctOutputPerFile, file, diagnosticCollection);
+            }
+            else {
+                console.log("ERROR: distinctOutputPerFile hat die property file nicht!");
+            }
+        }
+    }
+    addDiagnosticsPerFile(distinctOutputPerFile, file, diagnosticCollection) {
+        let findings = distinctOutputPerFile[file];
+        let diagnostics = Array();
+        findings.forEach(output => {
+            diagnostics.push(new vscode_1.Diagnostic(output.range, output.message, output.severity));
         });
-        diagnosticCollection.set(currentFile, diagnostics);
+        diagnosticCollection.set(vscode.Uri.file(file), diagnostics);
+    }
+    filterToDistinctErrorMessages(output) {
+        const isPropValuesEqual = (subject, target, propNames) => propNames.every(propName => subject[propName] === target[propName]);
+        const getUniqueItemsByProperties = (items, propNames) => items.filter((item, index, array) => index === array.findIndex(foundItem => isPropValuesEqual(foundItem, item, propNames)));
+        return getUniqueItemsByProperties(output, ['file', 'message', 'severity', 'lineFrom', 'lineTo']);
+    }
+    groupOutputByFile(output) {
+        var groupBy = function (xs, key) {
+            return xs.reduce(function (rv, x) {
+                (rv[x[key]] = rv[x[key]] || []).push(x);
+                return rv;
+            }, {});
+        };
+        let groupedResult = groupBy(output, 'file');
+        console.log(groupedResult);
+        return groupedResult;
     }
 }
-exports.execute = execute;
+exports.SushiController = SushiController;
 
 
 /***/ }),
@@ -48,10 +80,10 @@ exports.execute = execute;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.SushiWrapper = void 0;
 const sushiOutputParser_1 = __webpack_require__(4);
-var childProcess = __webpack_require__(6);
 class SushiWrapper {
     constructor(fshFilePath) {
         this.ressourcesFolderPath = this.getRessourcePath(fshFilePath);
+        this.sushiOutputParser = new sushiOutputParser_1.SushiOutputParser();
     }
     getRessourcePath(fshFilePath) {
         var resPath = fshFilePath.split('/input/fsh')[0];
@@ -61,48 +93,21 @@ class SushiWrapper {
         console.log(resPath);
         return resPath;
     }
-    runScript(command, args, callback) {
-        console.log("Starting Process." + command);
-        var child = childProcess.spawn(command, args);
-        var scriptOutput = "";
-        child.stdout.setEncoding('utf8');
-        child.stdout.on('data', function (data) {
-            console.log('stdout: ' + data);
-            data = data.toString();
-            scriptOutput += data;
-        });
-        child.stderr.setEncoding('utf8');
-        child.stderr.on('data', function (data) {
-            console.log('stderr: ' + data);
-            data = data.toString();
-            scriptOutput += data;
-        });
-        child.on('close', function (code) {
-            callback(scriptOutput, code);
+    execShellCommand(cmd) {
+        const exec = (__webpack_require__(6).exec);
+        return new Promise((resolve, reject) => {
+            exec(cmd, (error, stdout, stderr) => {
+                if (error) {
+                    console.warn(error);
+                }
+                resolve(stdout ? stdout : stderr);
+            });
         });
     }
-    startSushi() {
-        console.log("running: sushi " + this.ressourcesFolderPath);
-        this.runScript("sushi", [this.ressourcesFolderPath], function (output, exitCode) {
-            // this.runScript("ls" , ["-l"], function(output, exitCode: any) {
-            console.log("Process Finished.");
-            console.log('closing code: ' + exitCode);
-            console.log('Full output of script: ', output);
-        });
-    }
-    startSushi2() {
-        const cp = __webpack_require__(6);
-        var sushiOutputParser = new sushiOutputParser_1.SushiOutputParser();
-        cp.exec("sushi " + this.ressourcesFolderPath, (err, stdout, stderr) => {
-            let output = sushiOutputParser.getParsedOutput(stdout);
-            console.log(output[0].message);
-            return output;
-        });
-        return [];
-    }
-    getSushiOutput() {
-        return this.startSushi2();
-        //return new SushiOutput(new Range(2,5,2,2),"Testmessage", SeverityType.error);
+    async getSushiOutput() {
+        const sushiOutput = await this.execShellCommand("sushi " + this.ressourcesFolderPath);
+        var output = this.sushiOutputParser.getParsedOutput(sushiOutput);
+        return output;
     }
 }
 exports.SushiWrapper = SushiWrapper;
@@ -123,7 +128,7 @@ class SushiOutputParser {
         return this.getElements(logOutput);
     }
     getElements(logOutput) {
-        const regex = /(?<severity>\w+)\s(?<message>.*)\n\s+File:\s(?<file>.*)\n\s+Line:\s(?<line>\d+)/gm;
+        const regex = /(?<severity>\w+)\s(?<message>.*)\n\s+File:\s(?<file>.*)\n\s+Line:\s(?<line_from>\d+)(\s-\s(?<line_to>\d+))?/gm;
         let m;
         let output = [];
         while ((m = regex.exec(logOutput)) !== null) {
@@ -135,8 +140,12 @@ class SushiOutputParser {
                 severityType = vscode_1.DiagnosticSeverity.Warning;
             }
             if (m.groups?.message != null) {
-                var lineInt = +(m.groups?.line);
-                output.push(new sushiOutput_1.SushiOutput(severityType, m.groups?.message, m.groups?.file, new vscode_1.Range(lineInt, 0, lineInt, 10)));
+                var lineFrom = +(m.groups?.line_from) - 1;
+                var lineTo = lineFrom;
+                if (m.groups?.line_to != null) {
+                    lineTo = +(m.groups?.line_to) - 1;
+                }
+                output.push(new sushiOutput_1.SushiOutput(severityType, m.groups?.message, m.groups?.file, new vscode_1.Range(lineFrom, 0, lineTo, 200)));
             }
         }
         return output;
@@ -158,6 +167,8 @@ class SushiOutput {
         this.message = message;
         this.file = file;
         this.range = range;
+        this.lineFrom = range.start.line;
+        this.lineTo = range.end.line;
     }
 }
 exports.SushiOutput = SushiOutput;
@@ -208,7 +219,8 @@ const vscode = __webpack_require__(1);
 const sushiController_1 = __webpack_require__(2);
 function activate(context) {
     let runSushiSubscription = vscode.commands.registerCommand('codfsh.runSushi', () => {
-        (0, sushiController_1.execute)(context);
+        let sushiController = new sushiController_1.SushiController();
+        sushiController.execute();
     });
     let runHapiSubscription = vscode.commands.registerCommand('codfsh.runHapi', () => {
         vscode.window.showInformationMessage('Running Hapi!');
