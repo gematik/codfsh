@@ -1,7 +1,7 @@
 import { DiagnosticSeverity, Range } from "vscode";
 
 
-export class Diagniostic {
+export class Diagnostic {
     severity: DiagnosticSeverity;
     message: string;
     file: string;

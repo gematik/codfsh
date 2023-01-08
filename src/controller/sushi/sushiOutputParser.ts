@@ -1,5 +1,5 @@
 import { DiagnosticSeverity, Range } from "vscode";
-import { Diagniostic as Diagnostic } from "../models/diagnostic";
+import { Diagnostic } from "../../models/diagnostic";
 
 export class SushiOutputParser{
 
@@ -13,13 +13,13 @@ export class SushiOutputParser{
                 regex.lastIndex++;
             }
             var severityType = DiagnosticSeverity.Error;
-            if (m.groups?.severity == "warn" ){
+            if (m.groups?.severity === "warn" ){
                 severityType = DiagnosticSeverity.Warning;
             }
-            if (m.groups?.message != null) {
+            if (m.groups?.message) {
                 var lineFrom: number = +(m.groups?.line_from)- 1;
                 var lineTo: number = lineFrom;
-                if (m.groups?.line_to != null) {
+                if (m.groups?.line_to) {
                     lineTo = +(m.groups?.line_to) -1;
                 }
                 output.push(new Diagnostic(severityType, m.groups?.message, m.groups?.file, new Range(lineFrom,0,lineTo,200)));

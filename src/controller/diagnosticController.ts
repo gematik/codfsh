@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { Diagniostic } from "../models/diagnostic";
+import { Diagnostic } from "../models/diagnostic";
 import { DiagnosticManipulator } from "./diagnosticManipulator";
 
 export class DiagnosticController{
@@ -12,7 +12,7 @@ export class DiagnosticController{
         this.diagnosticManipulator = new DiagnosticManipulator();
     }
 
-    public addDiagnostics(diagniostics: Diagniostic[]) {
+    public addDiagnostics(diagniostics: Diagnostic[]) {
         let distinctDiagnosticsPerFile = this.diagnosticManipulator.manipulate(diagniostics);
         for (const file in distinctDiagnosticsPerFile) {
             if (!this.checkFile(file, distinctDiagnosticsPerFile)){
@@ -23,7 +23,7 @@ export class DiagnosticController{
         }
     }
     
-    private checkFile(file: string, distinctDiagnosticsPerFile: { [x: string]: Diagniostic[]; hasOwnProperty?: any; }): boolean {
+    private checkFile(file: string, distinctDiagnosticsPerFile: { [x: string]: Diagnostic[]; hasOwnProperty?: any; }): boolean {
         if (distinctDiagnosticsPerFile.hasOwnProperty(file)) {
             console.log(`ERROR: distinctDiagnosticsPerFile kennt die File ${file} nicht!`);
             return true;
@@ -31,7 +31,7 @@ export class DiagnosticController{
         return false;
     }
     
-    private map(myDiagnostics: { [key: string]: Diagniostic[]; }, file: string) {
+    private map(myDiagnostics: { [key: string]: Diagnostic[]; }, file: string) {
         let vsDiagnostics: Array<vscode.Diagnostic> = Array();
         myDiagnostics[file].forEach(diagnostic => {
             vsDiagnostics.push(new vscode.Diagnostic(diagnostic.range, diagnostic.message, diagnostic.severity));

@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
-import { SushiController } from './sushi/sushiController';
+import { SushiController } from './controller/sushi/sushiController';
+import { HapiController } from './controller/hapi/hapiController';
 
 
 export function activate(context: vscode.ExtensionContext) {
@@ -11,8 +12,8 @@ export function activate(context: vscode.ExtensionContext) {
 	});
 
 	let runHapiSubscription = vscode.commands.registerCommand('codfsh.runHapi', () => {
-		//let hapiController = new HapiController();
-	//	hapiController.execute();
+		let hapiController = new HapiController(diagnosticCollection);
+		hapiController.execute();
 		vscode.window.showInformationMessage('Running Hapi!');
 	});
 

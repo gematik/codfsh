@@ -1,9 +1,17 @@
+import { ProcessController } from "../processController";
 
 export class SushiWrapper {
+
+    processController : ProcessController;
+
+    constructor(){
+        this.processController = new ProcessController();
+    }
+
     public async getConsoleOutput(fshFilePath: string) : Promise<string>  {
         return new Promise((resolve, reject) => {
             this.getRessourcePath(fshFilePath).then((ressourcesFolderPath) => {
-                resolve(this.execShellCommand("sushi " + ressourcesFolderPath));
+                resolve(this.processController.execShellCommand("sushi " + ressourcesFolderPath));
             }).catch((error) => {
                 reject(error);
             });
@@ -33,23 +41,11 @@ export class SushiWrapper {
     }
 
     private isValidPath(resPath: string): boolean {
-        console.log(resPath)
         if(resPath.split('/').pop() === "Resources"){
             return true;
         }
         return false;
     }
 
-    private execShellCommand(cmd: string) : Promise<string>{
-        const exec = require('child_process').exec;
-        return new Promise((resolve, reject) => {
-            exec(cmd, (error: any, stdout: string, stderr: string) => {
-            if (error) {
-                console.log(error);
-                //reject(new Error(error));
-            }
-            resolve(stdout);
-            });
-        });
-    }
+    
 }

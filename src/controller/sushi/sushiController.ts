@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { SushiWrapper } from './sushiWrapper';
-import { DiagnosticController } from '../controller/diagnosticController';
+import { DiagnosticController } from '../diagnosticController';
 import { SushiOutputParser } from './sushiOutputParser';
 
 export class SushiController{
@@ -22,7 +22,7 @@ export class SushiController{
                 .then((consoleOutput : string) => {
                     var diagnostics = this.sushiOutputParser.getDiagnostics(consoleOutput);
                     this.diagnosticController.addDiagnostics(diagnostics); 
-                    vscode.window.showInformationMessage('Sushi Completed.');
+                    vscode.window.showInformationMessage('Sushi completed.');
                 }).catch((error) => {
                     console.log(error);
                     vscode.window.showErrorMessage(error);
