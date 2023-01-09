@@ -34,6 +34,11 @@ export class SushiWrapper {
 
     private searchRessourcePath(fshFilePath: string, input: string) {
         var resPath = fshFilePath.split(input)[0];
+        resPath = this.fixPath(resPath);
+        return resPath;
+    }
+
+    private fixPath(resPath: string) {
         if (resPath[0] === "/") {
             resPath = resPath.substring(1);
         }

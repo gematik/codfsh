@@ -24,7 +24,7 @@ export class SushiController{
                     this.diagnosticController.addDiagnostics(diagnostics); 
                     vscode.window.showInformationMessage('Sushi completed.');
                 }).catch((error) => {
-                    console.log(error);
+                    //console.log(error);
                     vscode.window.showErrorMessage(error);
                 });
         }

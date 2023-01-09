@@ -2,54 +2,60 @@ import * as vscode from 'vscode';
 import { DiagnosticController } from '../diagnosticController';
 import { HapiWrapper } from './hapiWrapper';
 import { HapiOutputParser } from './hapiOutputParser';
+import { ConfigHandler } from '../configHandler';
+import { DependencyController } from '../dependencyController';
+import { FileConnector } from './fileConnector';
+var path = require("path");
 
 
 export class HapiController{
     hapiWrapper : HapiWrapper;
     diagnosticController : DiagnosticController;    
     hapiOutputParser : HapiOutputParser;
+    configHandler: ConfigHandler;
+    dependencyController: DependencyController;
+    fileConnector: FileConnector;
 
     constructor(diagnosticCollection: vscode.DiagnosticCollection){
-        //TODO check for validator at given destination
-        //TODO check for sushiConfig at usual destination
-        //TODO check for proxy at usual destination
-        this.hapiWrapper = new HapiWrapper("C:/Users/robho/.fhir/validators/validator_cli_v5.6.89.jar",
-        "C:/dev/spec-erezept-medicationrequest-communication/Resources/sushi-config.yaml",
-        "C:/dev/spec-erezept-medicationrequest-communication/scripts/validation_script-config.yaml");
-        this.diagnosticController = new DiagnosticController(diagnosticCollection);
-        this.hapiOutputParser = new HapiOutputParser();
-    }
+        this.configHandler = new ConfigHandler();
 
-    public checkHapiInstallation(){
-        throw new Error('Method not implemented.');
+        this.dependencyController = new DependencyController(
+            this.configHandler.getFilePathFromConfig("HapiValidator.sushi-config.destination"));
+
+        this.hapiWrapper = new HapiWrapper(
+            this.configHandler.getFilePathFromConfig("HapiValidator.Executable"),
+            this.dependencyController.parseDependencies(),
+            this.configHandler.getProxySettings("HapiValidator.Proxy"));
+
+        this.diagnosticController = new DiagnosticController(diagnosticCollection);
+
+        this.hapiOutputParser = new HapiOutputParser();
+
+        this.fileConnector = new FileConnector(this.configHandler.getFilePathFromConfig("RessourcesFolder"));
     }
-    
 
     public download() {
         throw new Error('Method not implemented.');
-        //wget https://github.com/hapifhir/org.hl7.fhir.core/releases/download/5.6.89/validator_cli.jar -O $Userfolder\.fhir\validators\validator_cli_v5.6.89.jar
+        //wget https://github.com/hapifhir/org.hl7.fhir.core/releases/download/5.6.89/validator_cli.jar -O ~\.fhir\validators\validator_cli_v5.6.89.jar
     }
    
     public execute() {
         var currentFile = vscode.window.activeTextEditor?.document.uri;
         if (currentFile) {
-            vscode.window.showInformationMessage('Running Hapi Validator...');
-            let filetoValidate = this.getfileToValidate(currentFile.path);
-            this.hapiWrapper.getConsoleOutput(filetoValidate)
-                .then((consoleOutput : string) => {
-                    var diagnostics = this.hapiOutputParser.getDiagnostics(consoleOutput, filetoValidate);
-                    this.diagnosticController.addDiagnostics(diagnostics); 
-                    vscode.window.showInformationMessage('Hapi Validator completed.');
-                }).catch((error) => {
-                    console.log(error);
-                    vscode.window.showErrorMessage(error);
-                });
+            let filestoValidate = this.fileConnector.identifyGeneratedRessources(currentFile);
+            filestoValidate.forEach((fileToValidate) => {
+                vscode.window.showInformationMessage("Running Hapi for '" + path.basename(fileToValidate) + "'...");
+                this.hapiWrapper.getConsoleOutput(fileToValidate)
+                    .then((consoleOutput : string) => {
+                        var diagnostics = this.hapiOutputParser.getDiagnostics(consoleOutput, fileToValidate);
+                        this.diagnosticController.addDiagnostics(diagnostics); 
+                        vscode.window.showInformationMessage("Hapi completed for '" + path.basename(fileToValidate) + "'...");
+                    }).catch((error) => {
+                        //console.log(error);
+                        vscode.window.showErrorMessage(error);
+                    });
+            });
         }
-    }
-
-    private getfileToValidate(fshFilePath: string) : string {
-        //TODO: Implement logic to identify generated output file for given fsh file
-        return "C:/dev/spec-erezept-medicationrequest-communication/Resources/fsh-generated/resources/Bundle-CancellationBundleFromDispensingOrganisation.json";
     }
 }
 

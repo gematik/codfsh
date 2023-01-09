@@ -22,7 +22,7 @@ export class HapiOutputParser{
                 if (m.groups?.col_from) {
                     colFrom = +(m.groups?.col_from) -1;
                 }
-                output.push(new Diagnostic(severityType, m.groups?.message, filetoValidate, new Range(lineFrom,colFrom,lineFrom,200)));
+                output.push(new Diagnostic(severityType, m.groups?.path + " | " +  m.groups?.message, filetoValidate, new Range(lineFrom,colFrom,lineFrom,200)));
             }
         }
         return output;

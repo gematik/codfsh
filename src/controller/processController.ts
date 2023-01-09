@@ -5,7 +5,7 @@ export class ProcessController{
         return new Promise((resolve, reject) => {
             exec(cmd, (error: any, stdout: string, stderr: string) => {
             if (error) {
-                console.log(error);
+               // console.log(error);
                 //reject(new Error(error));
             }
             resolve(stdout);

@@ -28,7 +28,6 @@ export class DiagnosticManipulator{
             }, {});
           };
           let groupedResult =  groupBy(diagnostics, 'file');
-          console.log(groupedResult);
           return groupedResult;
     }
 }

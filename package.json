@@ -16,6 +16,41 @@
   ],
   "main": "./dist/extension.js",
   "contributes": {
+    "configuration": {
+      "title": "Codfsh",
+      "properties": {
+        "codfsh.RessourcesFolder": {
+          "type": "string",
+          "default": "./Resources/",
+          "scope": "resource",
+          "description": "Specifies the folder path containing folder structure expected by SUSHI for a FSH project."
+        },
+        "codfsh.HapiValidator.Executable": {
+          "type": "string",
+          "default": "~/.fhir/validators/validator_cli_v5.6.89.jar",
+          "scope": "resource",
+          "description": "Specifies the destination of the hapi hapiValidator."
+        },
+        "codfsh.HapiValidator.sushi-config.destination": {
+          "type": "string",
+          "default": "./Resources/sushi-config.yaml",
+          "scope": "resource",
+          "description": "Specifies the path to sushi-config.yaml, needed to parse dependencies."
+        },
+        "codfsh.HapiValidator.Proxy.enabled": {
+          "type": "boolean",
+          "default": true,
+          "scope": "resource",
+          "description": "Use proxy"
+        },
+        "codfsh.HapiValidator.Proxy.ipAddress": {
+          "type": "string",
+          "default": "192.168.110.10:3128",
+          "scope": "resource",
+          "description": "Proxy address"
+        }
+      }
+    },
     "commands": [
       {
         "command": "codfsh.runFhirFsh",
@@ -45,6 +80,7 @@
   },
   "devDependencies": {
     "@types/glob": "^8.0.0",
+    "@types/js-yaml": "^4.0.5",
     "@types/mocha": "^10.0.1",
     "@types/node": "16.x",
     "@types/vscode": "^1.74.0",
