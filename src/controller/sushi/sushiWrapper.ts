@@ -1,5 +1,5 @@
 import { ProcessController } from "../processController";
-
+import { join } from 'path';
 export class SushiWrapper {
 
     processController : ProcessController;
@@ -11,13 +11,15 @@ export class SushiWrapper {
     public async getConsoleOutput(fshFilePath: string) : Promise<string>  {
         return new Promise((resolve, reject) => {
             this.getRessourcePath(fshFilePath).then((ressourcesFolderPath) => {
-                resolve(this.processController.execShellCommand("sushi " + ressourcesFolderPath));
+                let cmd = "sushi " + ressourcesFolderPath;
+                console.log(cmd);
+                resolve(this.processController.execShellCommand(cmd));
             }).catch((error) => {
                 reject(error);
             });
         });
     }
-    
+
      private getRessourcePath(fshFilePath:string): Promise<string> {
         return new Promise((resolve, reject) => {
             var resPath = this.searchRessourcePath(fshFilePath, '/input/fsh');
@@ -34,14 +36,7 @@ export class SushiWrapper {
 
     private searchRessourcePath(fshFilePath: string, input: string) {
         var resPath = fshFilePath.split(input)[0];
-        resPath = this.fixPath(resPath);
-        return resPath;
-    }
-
-    private fixPath(resPath: string) {
-        if (resPath[0] === "/") {
-            resPath = resPath.substring(1);
-        }
+        resPath = join(resPath);
         return resPath;
     }
 
@@ -52,5 +47,5 @@ export class SushiWrapper {
         return false;
     }
 
-    
+
 }

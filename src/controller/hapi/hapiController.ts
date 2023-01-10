@@ -10,7 +10,7 @@ var path = require("path");
 
 export class HapiController{
     hapiWrapper : HapiWrapper;
-    diagnosticController : DiagnosticController;    
+    diagnosticController : DiagnosticController;
     hapiOutputParser : HapiOutputParser;
     configHandler: ConfigHandler;
     dependencyController: DependencyController;
@@ -20,7 +20,7 @@ export class HapiController{
         this.configHandler = new ConfigHandler();
 
         this.dependencyController = new DependencyController(
-            this.configHandler.getFilePathFromConfig("HapiValidator.sushi-config.destination"));
+            this.configHandler.getFilePathFromConfig("HapiValidator.sushi-config.path"));
 
         this.hapiWrapper = new HapiWrapper(
             this.configHandler.getFilePathFromConfig("HapiValidator.Executable"),
@@ -38,7 +38,7 @@ export class HapiController{
         throw new Error('Method not implemented.');
         //wget https://github.com/hapifhir/org.hl7.fhir.core/releases/download/5.6.89/validator_cli.jar -O ~\.fhir\validators\validator_cli_v5.6.89.jar
     }
-   
+
     public execute() {
         var currentFile = vscode.window.activeTextEditor?.document.uri;
         if (currentFile) {
@@ -48,7 +48,7 @@ export class HapiController{
                 this.hapiWrapper.getConsoleOutput(fileToValidate)
                     .then((consoleOutput : string) => {
                         var diagnostics = this.hapiOutputParser.getDiagnostics(consoleOutput, fileToValidate);
-                        this.diagnosticController.addDiagnostics(diagnostics); 
+                        this.diagnosticController.addDiagnostics(diagnostics);
                         vscode.window.showInformationMessage("Hapi completed for '" + path.basename(fileToValidate) + "'...");
                     }).catch((error) => {
                         //console.log(error);

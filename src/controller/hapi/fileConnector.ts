@@ -1,7 +1,6 @@
 import * as vscode from 'vscode';
 import { FshParser } from './fshParser';
 import fs = require('fs');
-import glob = require('glob');
 import { basename, join } from 'path';
 
 export class FileConnector{
@@ -43,24 +42,17 @@ export class FileConnector{
         if (resultfiles.length === 0){
             throw new Error("Unable to identify generated files from this file.");
         }
-        
+
         return resultfiles;
     }
-   
+
 
     private isGeneratedFile(currentfile: vscode.Uri) : boolean {
         return currentfile.path.indexOf("fsh-generated") > -1;
     }
 
     private searchForIdsInFile(currentfile: string) : string[] {
-        let fshContent  = fs.readFileSync(this.fixPath(currentfile), 'utf8');
+        let fshContent  = fs.readFileSync(join(currentfile), 'utf8');
         return this.fshParser.getIdsFromFshFile(fshContent);
-    }
-
-    private fixPath(resPath: string) {
-        if (resPath[0] === "/") {
-            resPath = resPath.substring(1);
-        }
-        return resPath;
     }
 }

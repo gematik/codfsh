@@ -31,7 +31,7 @@
           "scope": "resource",
           "description": "Specifies the destination of the hapi hapiValidator."
         },
-        "codfsh.HapiValidator.sushi-config.destination": {
+        "codfsh.HapiValidator.sushi-config.path": {
           "type": "string",
           "default": "./Resources/sushi-config.yaml",
           "scope": "resource",

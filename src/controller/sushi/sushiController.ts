@@ -5,7 +5,7 @@ import { SushiOutputParser } from './sushiOutputParser';
 
 export class SushiController{
     sushiWrapper : SushiWrapper;
-    diagnosticController : DiagnosticController;    
+    diagnosticController : DiagnosticController;
     sushiOutputParser : SushiOutputParser;
 
     constructor(diagnosticCollection: vscode.DiagnosticCollection){
@@ -13,7 +13,7 @@ export class SushiController{
         this.diagnosticController = new DiagnosticController(diagnosticCollection);
         this.sushiOutputParser = new SushiOutputParser();
     }
-   
+
     public execute() {
         var currentFile = vscode.window.activeTextEditor?.document.uri;
         if (currentFile) {
@@ -21,7 +21,7 @@ export class SushiController{
             this.sushiWrapper.getConsoleOutput(currentFile.path)
                 .then((consoleOutput : string) => {
                     var diagnostics = this.sushiOutputParser.getDiagnostics(consoleOutput);
-                    this.diagnosticController.addDiagnostics(diagnostics); 
+                    this.diagnosticController.addDiagnostics(diagnostics);
                     vscode.window.showInformationMessage('Sushi completed.');
                 }).catch((error) => {
                     //console.log(error);
