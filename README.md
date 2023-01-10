@@ -1,71 +1,51 @@
-# codfsh README
+# codfsh extension README
 
-This is the README for your extension "codfsh". After writing up a brief description, we recommend including the following sections.
+This extensions wrappes SUSHI Shorthand and Hapi Validator to provide propper warning and error messages.
 
 ## Features
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
+### Execute Sushi Shorthand
 
-For example if there is an image subfolder under your extension project workspace:
+Execute sushi shorthand with `Run Sushi` command to get line based error or warnings messages under the Problems tab in your terminal
 
-\!\[feature X\]\(images/feature-x.png\)
+![sushi Errors Example](images/sushiErrors.png)
 
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+> Tip: You can bind a key to execute sushi shorthand. We recommend you use 'F5' to run Sushi.
+
+### Execute Hapi Validator
+
+Execute Hapi Validator with `Run Hapi Validator` command to get line based error or warnings messages under the Problems tab in your terminal
 
 ## Requirements
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+It is mandatory that sushi Shorthand and Hapi Validator are installed on the system.
+### Install Sushi Shorthand
 
+```
+sudo npm install -g fsh-sushi
+```
+
+### Install Hapi Validator
+
+```
+sudo dotnet tool install --global firely.terminal
+```
+
+The path of the Hapi Validator needs to be specified in the Settings of the extension.
 ## Extension Settings
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
+To work properly the following settings need to be set:
 
-For example:
+![sushi Settings](images/settings.png)
 
-This extension contributes the following settings:
-
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
 
 ## Known Issues
 
-Calling out known issues can help limit users opening duplicate issues against your extension.
+* path information in the settings must be absolute. Relative paths do not work at the moment,
 
 ## Release Notes
 
-Users appreciate release notes as you update your extension.
 
 ### 1.0.0
 
-Initial release of ...
-
-### 1.0.1
-
-Fixed issue #.
-
-### 1.1.0
-
-Added features X, Y, and Z.
-
----
-
-## Following extension guidelines
-
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
-
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
-
-## Working with Markdown
-
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
-
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
-
-## For more information
-
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**
+Initial release of Extension
