@@ -2,15 +2,17 @@ import * as vscode from 'vscode';
 import { FshParser } from './fshParser';
 import fs = require('fs');
 import { basename, join } from 'path';
+import { ConfigHandler } from '../configHandler';
 
 export class FileConnector{
 
     fshParser : FshParser;
     ressourcesFolder : string;
 
-    constructor(ressourcesFolder: string){
+
+    constructor(configHandler: ConfigHandler){
         this.fshParser = new FshParser();
-        this.ressourcesFolder = ressourcesFolder;
+        this.ressourcesFolder = configHandler.getFilePathFromConfig("RessourcesFolder");
     }
 
     public identifyGeneratedRessources(currentfile: vscode.Uri) : string[] {
