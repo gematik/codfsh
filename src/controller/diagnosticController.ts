@@ -12,6 +12,10 @@ export class DiagnosticController{
         this.diagnosticManipulator = new DiagnosticManipulator();
     }
 
+    public clearDiagnosticCollection(){
+        this.diagnosticCollection.clear();
+    }
+
     public addDiagnostics(diagniostics: Diagnostic[]) {
         let distinctDiagnosticsPerFile = this.diagnosticManipulator.manipulate(diagniostics);
         for (const file in distinctDiagnosticsPerFile) {
@@ -22,7 +26,7 @@ export class DiagnosticController{
             this.add(file, vsDiagnostics);
         }
     }
-    
+
     private checkFile(file: string, distinctDiagnosticsPerFile: { [x: string]: Diagnostic[]; hasOwnProperty?: any; }): boolean {
         if (distinctDiagnosticsPerFile.hasOwnProperty(file)) {
             console.log(`ERROR: distinctDiagnosticsPerFile kennt die File ${file} nicht!`);
@@ -30,13 +34,13 @@ export class DiagnosticController{
         }
         return false;
     }
-    
+
     private map(myDiagnostics: { [key: string]: Diagnostic[]; }, file: string) {
         let vsDiagnostics: Array<vscode.Diagnostic> = Array();
         myDiagnostics[file].forEach(diagnostic => {
             vsDiagnostics.push(new vscode.Diagnostic(diagnostic.range, diagnostic.message, diagnostic.severity));
         });
-        return vsDiagnostics;        
+        return vsDiagnostics;
     }
 
     private add(file: string, vsDiagnostics: vscode.Diagnostic[]) {

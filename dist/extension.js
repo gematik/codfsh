@@ -27,6 +27,7 @@ class SushiController {
     execute() {
         var currentFile = vscode.window.activeTextEditor?.document.uri;
         if (currentFile) {
+            this.diagnosticController.clearDiagnosticCollection();
             vscode.window.showInformationMessage('Running Sushi...');
             this.sushiWrapper.getConsoleOutput(currentFile.path)
                 .then((consoleOutput) => {
@@ -180,6 +181,9 @@ class DiagnosticController {
         this.diagnosticCollection = diagnosticCollection;
         this.diagnosticManipulator = new diagnosticManipulator_1.DiagnosticManipulator();
     }
+    clearDiagnosticCollection() {
+        this.diagnosticCollection.clear();
+    }
     addDiagnostics(diagniostics) {
         let distinctDiagnosticsPerFile = this.diagnosticManipulator.manipulate(diagniostics);
         for (const file in distinctDiagnosticsPerFile) {
@@ -327,6 +331,7 @@ class HapiController {
         this.notificationController = new notificationController_1.NotificationController();
     }
     execute() {
+        this.diagnosticController.clearDiagnosticCollection();
         var currentFile = vscode.window.activeTextEditor?.document.uri;
         if (currentFile) {
             let filesForValidation = this.fileConnector.identifyGeneratedRessources(currentFile);

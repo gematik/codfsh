@@ -29,6 +29,7 @@ export class HapiController{
     }
 
     public execute() {
+        this.diagnosticController.clearDiagnosticCollection();
         var currentFile = vscode.window.activeTextEditor?.document.uri;
         if (currentFile) {
             let filesForValidation = this.fileConnector.identifyGeneratedRessources(currentFile);
