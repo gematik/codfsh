@@ -17,6 +17,7 @@ export class SushiController{
     public execute() {
         var currentFile = vscode.window.activeTextEditor?.document.uri;
         if (currentFile) {
+            this.diagnosticController.clearDiagnosticCollection();
             vscode.window.showInformationMessage('Running Sushi...');
             this.sushiWrapper.getConsoleOutput(currentFile.path)
                 .then((consoleOutput : string) => {

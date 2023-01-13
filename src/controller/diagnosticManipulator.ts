@@ -11,8 +11,8 @@ export class DiagnosticManipulator{
     private filterToDistinctErrorMessages(diagnistics: Diagnostic[]) : Diagnostic[] {
         const isPropValuesEqual = (subject: { [x: string]: any; }, target: { [x: string]: any; }, propNames: any[]) =>
         propNames.every(propName => subject[propName] === target[propName]);
-      
-        const getUniqueItemsByProperties = (items: any[], propNames: any[]) => 
+
+        const getUniqueItemsByProperties = (items: any[], propNames: any[]) =>
         items.filter((item, index, array) =>
           index === array.findIndex(foundItem => isPropValuesEqual(foundItem, item, propNames))
         );
@@ -28,6 +28,7 @@ export class DiagnosticManipulator{
             }, {});
           };
           let groupedResult =  groupBy(diagnostics, 'file');
+          console.log(groupedResult)
           return groupedResult;
     }
 }

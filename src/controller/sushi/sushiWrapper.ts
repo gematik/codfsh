@@ -11,9 +11,10 @@ export class SushiWrapper {
     public async getConsoleOutput(fshFilePath: string) : Promise<string>  {
         return new Promise((resolve, reject) => {
             this.getRessourcePath(fshFilePath).then((ressourcesFolderPath) => {
-                let cmd = "sushi " + ressourcesFolderPath;
-                console.log(cmd);
-                resolve(this.processController.execShellCommand(cmd));
+                let args = [];
+                args.push(ressourcesFolderPath);
+                args.push('-s');
+                resolve(this.processController.execShellCommand("sushi", args, "Sushi"));
             }).catch((error) => {
                 reject(error);
             });
