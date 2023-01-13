@@ -6,6 +6,7 @@ import { ConfigHandler } from '../configHandler';
 import { FileConnector } from './fileConnector';
 import { ErrorHandler } from '../errorHandler';
 import { NotificationController } from '../notificationController';
+import { ValidationResult } from '../../models/validationResult';
 
 
 export class HapiController{
@@ -31,26 +32,27 @@ export class HapiController{
         var currentFile = vscode.window.activeTextEditor?.document.uri;
         if (currentFile) {
             let filesForValidation = this.fileConnector.identifyGeneratedRessources(currentFile);
-            filesForValidation.forEach((file) => {
-                this.validate(file);
-            });
+            this.validate(filesForValidation);
         }
     }
 
-    private validate(filesForValidation: string) {
+    private validate(filesForValidation: string[]) {
         this.notificationController.notifyStarted(filesForValidation);
         this.hapiWrapper.getConsoleOutput(filesForValidation)
             .then((consoleOutput: string) => {
-                this.processDiagnostics(consoleOutput, filesForValidation);
+                this.processValidationResults(consoleOutput);
             }).catch((error) => {
                 this.errorHandler.handleError(error);
             });
     }
 
-    private processDiagnostics(consoleOutput: string, fileToValidate: string) {
-        var diagnostics = this.hapiOutputParser.getDiagnostics(consoleOutput, fileToValidate);
-        this.diagnosticController.addDiagnostics(diagnostics);
-        this.notificationController.notifyCompleted(fileToValidate);
+    private processValidationResults(consoleOutput: string) {
+        var validationResults = this.hapiOutputParser.getValidationResults(consoleOutput);
+        validationResults.forEach((result : ValidationResult) => {
+            this.diagnosticController.addDiagnostics(result.diagnostics);
+            this.notificationController.notifyCompleted(result.file + " " + result.summary);
+        });
+
     }
 }
 

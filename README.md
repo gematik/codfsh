@@ -8,7 +8,7 @@ This extensions wrappes SUSHI Shorthand and Hapi Validator to provide propper wa
 
 Execute sushi shorthand with `Run Sushi` command to get line based error or warnings messages under the Problems tab in your terminal
 
-![sushi Errors Example](images/sushiErrors.png)
+![sushi Errors Example][errorImage]
 
 > Tip: You can bind a key to execute sushi shorthand. We recommend you use 'F5' to run Sushi.
 
@@ -36,7 +36,7 @@ The path of the Hapi Validator needs to be specified in the Settings of the exte
 
 To work properly the following settings need to be set:
 
-![sushi Settings](images/settings.png)
+![sushi Settings][sushiSettings]
 
 
 ## Known Issues
@@ -49,3 +49,7 @@ To work properly the following settings need to be set:
 ### 1.0.0
 
 Initial release of Extension
+
+
+[errorImage]: https://github.com/HendrikGematik/codfsh/blob/main/images/sushiErrors.png
+[sushiSettings]: https://github.com/HendrikGematik/codfsh/raw/main/images/settings.png
