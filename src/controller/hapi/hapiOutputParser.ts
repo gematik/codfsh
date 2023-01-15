@@ -1,8 +1,15 @@
 import { DiagnosticSeverity, Range } from "vscode";
 import { Diagnostic } from "../../models/diagnostic";
 import { ValidationResult } from "../../models/validationResult";
+import { DebugHandler } from "../debugHandler";
 
 export class HapiOutputParser{
+
+    debugHandler : DebugHandler;
+
+    constructor(debugHandler : DebugHandler){
+        this.debugHandler = debugHandler;
+    }
 
     public getValidationResults(logOutput: string): ValidationResult[]{
         const files = this.getFilesValidated(logOutput);

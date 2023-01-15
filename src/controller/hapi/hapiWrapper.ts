@@ -2,30 +2,34 @@ import { ProcessController } from "../processController";
 import { ProxySettings } from "../../models/proxySettings";
 import { ConfigHandler } from "../configHandler";
 import { DependencyController } from "../dependencyController";
+import { PathController } from "../pathController";
+import { DebugHandler } from "../debugHandler";
+import { Dependency } from "../../models/dependency";
 
 
 export class HapiWrapper{
 
+    debugHandler : DebugHandler;
     processController : ProcessController;
-    dependencyController: DependencyController;
+
     validatorDestination : string;
     proxyConfig: ProxySettings;
 
-    constructor(configHandler: ConfigHandler){
-        this.processController = new ProcessController();
-        this.dependencyController = new DependencyController(configHandler);
+    constructor(debugHandler : DebugHandler, configHandler: ConfigHandler){
+        this.debugHandler = debugHandler;
+        this.processController = new ProcessController(this.debugHandler);
         this.validatorDestination = configHandler.getFilePathFromConfig("HapiValidator.Executable");
         this.proxyConfig =  configHandler.getProxySettings("HapiValidator.Proxy");
     }
 
-    public async getConsoleOutput(filesToValidate: string[]) : Promise<string>  {
+    public async getConsoleOutput(filesToValidate: string[], dependencies: string[])  : Promise<string>  {
         //TODO: Check validator available, if not ask to download?!
-        return new Promise((resolve, reject) => {
+        return new Promise(async (resolve, reject) => {
             let args = [];
             args.push(this.validatorDestination);
             args.push(`-version 4.0.1`);
             args.push(this.formatProxySettings());
-            this.dependencyController.getDependenciesAsIgList().forEach(dep => {
+            dependencies.forEach(dep => {
                 args.push(dep);
             });
             filesToValidate.forEach((file) => {
@@ -33,7 +37,7 @@ export class HapiWrapper{
             });
 
 
-            let output = this.processController.execShellCommand_old('java -jar',args, "Hapi");
+            let output = this.processController.execShellCommandSync('java -jar',args, "Hapi");
             console.log(output);
             resolve(output);
         });

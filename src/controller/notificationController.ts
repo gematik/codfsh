@@ -1,7 +1,16 @@
 import * as vscode from 'vscode';
+import { DebugHandler } from './debugHandler';
 var path = require("path");
 
 export class NotificationController {
+
+    debugHandler : DebugHandler;
+
+    constructor(debugHandler : DebugHandler){
+        this.debugHandler = debugHandler;
+    }
+   
+
     notifyStarted(filesForValidation: string[]) {
         filesForValidation.forEach(file => {
             vscode.window.showInformationMessage("Running Hapi for '" + path.basename(file) + "'...");

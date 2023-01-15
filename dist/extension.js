@@ -14,31 +14,38 @@ module.exports = require("vscode");
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.SushiController = void 0;
-const vscode = __webpack_require__(1);
 const sushiWrapper_1 = __webpack_require__(3);
 const diagnosticController_1 = __webpack_require__(7);
 const sushiOutputParser_1 = __webpack_require__(9);
+const pathController_1 = __webpack_require__(11);
 class SushiController {
-    constructor(diagnosticCollection) {
-        this.sushiWrapper = new sushiWrapper_1.SushiWrapper();
-        this.diagnosticController = new diagnosticController_1.DiagnosticController(diagnosticCollection);
-        this.sushiOutputParser = new sushiOutputParser_1.SushiOutputParser();
+    constructor(debugHandler, diagnosticCollection) {
+        this.debugHandler = debugHandler;
+        this.pathController = new pathController_1.PathController(this.debugHandler);
+        this.sushiWrapper = new sushiWrapper_1.SushiWrapper(this.debugHandler, this.pathController);
+        this.diagnosticController = new diagnosticController_1.DiagnosticController(this.debugHandler, diagnosticCollection);
+        this.sushiOutputParser = new sushiOutputParser_1.SushiOutputParser(this.debugHandler);
     }
-    execute() {
-        var currentFile = vscode.window.activeTextEditor?.document.uri;
-        if (currentFile) {
-            this.diagnosticController.clearDiagnosticCollection();
-            vscode.window.showInformationMessage('Running Sushi...');
-            this.sushiWrapper.getConsoleOutput(currentFile.path)
-                .then((consoleOutput) => {
-                var diagnostics = this.sushiOutputParser.getDiagnostics(consoleOutput);
-                this.diagnosticController.addDiagnostics(diagnostics);
-                vscode.window.showInformationMessage('Sushi completed.');
-            }).catch((error) => {
-                //console.log(error);
-                vscode.window.showErrorMessage(error);
-            });
+    async execute() {
+        try {
+            this.debugHandler.log("info", "Running Sushi...", true);
+            const consoleOutput = await this.getConsoleOuput();
+            var diagnostics = this.sushiOutputParser.getDiagnostics(consoleOutput);
+            this.addDiagnistics(diagnostics);
+            this.debugHandler.log("info", "Sushi completed.", true);
         }
+        catch (error) {
+            this.debugHandler.log("error", error, true);
+        }
+    }
+    addDiagnistics(diagnostics) {
+        this.diagnosticController.clearDiagnosticCollection();
+        this.diagnosticController.addDiagnostics(diagnostics);
+    }
+    async getConsoleOuput() {
+        const pathValues = await this.pathController.getPathVariables();
+        const consoleOutput = await this.sushiWrapper.getConsoleOutput(pathValues.ressourceFolderPath);
+        return consoleOutput;
     }
 }
 exports.SushiController = SushiController;
@@ -52,46 +59,25 @@ exports.SushiController = SushiController;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.SushiWrapper = void 0;
 const processController_1 = __webpack_require__(4);
-const path_1 = __webpack_require__(6);
 class SushiWrapper {
-    constructor() {
-        this.processController = new processController_1.ProcessController();
+    constructor(debugHandler, pathController) {
+        this.debugHandler = debugHandler;
+        this.pathController = pathController;
+        this.processController = new processController_1.ProcessController(this.debugHandler);
     }
-    async getConsoleOutput(fshFilePath) {
-        return new Promise((resolve, reject) => {
-            this.getRessourcePath(fshFilePath).then((ressourcesFolderPath) => {
+    async getConsoleOutput(ressourceFolderPath) {
+        return new Promise(async (resolve, reject) => {
+            try {
                 let args = [];
-                args.push(ressourcesFolderPath);
+                args.push(ressourceFolderPath);
                 args.push('-s');
-                resolve(this.processController.execShellCommand("sushi", args, "Sushi"));
-            }).catch((error) => {
-                reject(error);
-            });
-        });
-    }
-    getRessourcePath(fshFilePath) {
-        return new Promise((resolve, reject) => {
-            var resPath = this.searchRessourcePath(fshFilePath, '/input/fsh');
-            if (this.isValidPath(resPath)) {
-                resolve(resPath);
+                let output = await this.processController.execShellCommandSync("sushi", args, "Sushi");
+                resolve(output);
             }
-            resPath = this.searchRessourcePath(fshFilePath, '/_preprocessed');
-            if (this.isValidPath(resPath)) {
-                resolve(resPath);
+            catch (e) {
+                reject(e);
             }
-            reject(new Error("Unable to find folder structure expected by SUSHI for a FSH project"));
         });
-    }
-    searchRessourcePath(fshFilePath, input) {
-        var resPath = fshFilePath.split(input)[0];
-        resPath = (0, path_1.join)(resPath);
-        return resPath;
-    }
-    isValidPath(resPath) {
-        if (resPath.split('/').pop() === "Resources") {
-            return true;
-        }
-        return false;
     }
 }
 exports.SushiWrapper = SushiWrapper;
@@ -105,16 +91,21 @@ exports.SushiWrapper = SushiWrapper;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.ProcessController = void 0;
 const vscode = __webpack_require__(1);
-const node_child_process_1 = __webpack_require__(48);
+const node_child_process_1 = __webpack_require__(5);
 class ProcessController {
-    execShellCommand(cmd, arg, outputChannel) {
+    constructor(debugHandler) {
+        this.debugHandler = debugHandler;
+    }
+    execShellCommandAsync(cmd, arg, outputChannel) {
         let output = vscode.window.createOutputChannel(outputChannel);
         output.clear();
-        output.appendLine(cmd + ' ' + arg.join(' '));
+        let logCommand = cmd + ' ' + arg.join(' ');
         output.show();
         let stringoutput = "";
         return new Promise((resolve, reject) => {
-            console.log(cmd + ' ' + arg.join(' '));
+            console.log(logCommand);
+            this.debugHandler.log("info", "Executing: '" + logCommand + "'");
+            output.appendLine(logCommand);
             const run = (0, node_child_process_1.spawn)(cmd, arg);
             run.stdout.on('data', (data) => {
                 output.appendLine(data);
@@ -132,8 +123,8 @@ class ProcessController {
             });
         });
     }
-    execShellCommand_old(cmdOnly, arg, outputChannel) {
-        const exec = (__webpack_require__(5).exec);
+    execShellCommandSync(cmdOnly, arg, outputChannel) {
+        const exec = (__webpack_require__(6).exec);
         const cmd = cmdOnly + ' ' + arg.join(' ');
         console.log(cmd);
         let output = vscode.window.createOutputChannel(outputChannel);
@@ -159,13 +150,13 @@ exports.ProcessController = ProcessController;
 /* 5 */
 /***/ ((module) => {
 
-module.exports = require("child_process");
+module.exports = require("node:child_process");
 
 /***/ }),
 /* 6 */
 /***/ ((module) => {
 
-module.exports = require("path");
+module.exports = require("child_process");
 
 /***/ }),
 /* 7 */
@@ -177,15 +168,16 @@ exports.DiagnosticController = void 0;
 const vscode = __webpack_require__(1);
 const diagnosticManipulator_1 = __webpack_require__(8);
 class DiagnosticController {
-    constructor(diagnosticCollection) {
+    constructor(debugHandler, diagnosticCollection) {
+        this.debugHandler = debugHandler;
         this.diagnosticCollection = diagnosticCollection;
         this.diagnosticManipulator = new diagnosticManipulator_1.DiagnosticManipulator();
     }
     clearDiagnosticCollection() {
         this.diagnosticCollection.clear();
     }
-    addDiagnostics(diagniostics) {
-        let distinctDiagnosticsPerFile = this.diagnosticManipulator.manipulate(diagniostics);
+    addDiagnostics(diagnostics) {
+        let distinctDiagnosticsPerFile = this.diagnosticManipulator.manipulate(diagnostics);
         for (const file in distinctDiagnosticsPerFile) {
             if (!this.checkFile(file, distinctDiagnosticsPerFile)) {
                 break;
@@ -258,6 +250,9 @@ exports.SushiOutputParser = void 0;
 const vscode_1 = __webpack_require__(1);
 const diagnostic_1 = __webpack_require__(10);
 class SushiOutputParser {
+    constructor(debugHandler) {
+        this.debugHandler = debugHandler;
+    }
     getDiagnostics(logOutput) {
         const regex = /(?<severity>\w+)\s(?<message>.*)\n\s+File:\s(?<file>.*)\n\s+Line:\s(?<line_from>\d+)(\s-\s(?<line_to>\d+))?/gm;
         let m;
@@ -311,44 +306,174 @@ exports.Diagnostic = Diagnostic;
 
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.PathController = void 0;
+const vscode = __webpack_require__(1);
+const path_1 = __webpack_require__(12);
+const pathValues_1 = __webpack_require__(13);
+const { readdir } = (__webpack_require__(14).promises);
+var path = __webpack_require__(12);
+class PathController {
+    constructor(debugHandler) {
+        this.debugHandler = debugHandler;
+    }
+    async getPathVariables() {
+        return new Promise(async (resolve, reject) => {
+            try {
+                const sushiConfigPath = await this.getSushiConfig();
+                this.debugHandler.log("info", "Found sushiConfigPath: " + sushiConfigPath);
+                let ressourceFolder = this.getResouceFolder(sushiConfigPath);
+                this.debugHandler.log("info", "Found ressourceFolder: " + ressourceFolder);
+                resolve(new pathValues_1.PathValues(sushiConfigPath, ressourceFolder));
+            }
+            catch (e) {
+                reject(e);
+            }
+        });
+    }
+    getSushiConfig() {
+        async function getFiles(dir) {
+            const dirents = await readdir(dir, { withFileTypes: true });
+            const files = await Promise.all(dirents.map((dirent) => {
+                const res = (0, path_1.resolve)(dir, dirent.name);
+                return dirent.isDirectory() ? getFiles(res) : res;
+            }));
+            return files.flat();
+        }
+        return new Promise(async (resolve, reject) => {
+            let find = undefined;
+            let files = await getFiles(this.getWorkspaceFolder());
+            files.forEach((file) => {
+                if (path.basename(file) === "sushi-config.yaml") {
+                    find = file;
+                    resolve(file);
+                    return;
+                }
+            });
+            if (find !== undefined) {
+                return find;
+            }
+            else {
+                reject("Unable to find a sushi-config.yaml in current Workpace.");
+            }
+        });
+    }
+    getResouceFolder(sushiConfigPath) {
+        return sushiConfigPath.replace("sushi-config.yaml", "");
+    }
+    getWorkspaceFolder() {
+        if (vscode.workspace.workspaceFolders !== undefined) {
+            let workspacefolder = vscode.workspace.workspaceFolders[0].uri.fsPath;
+            this.debugHandler.log('info', `Found Workspacefolder in '${workspacefolder}'`);
+            return workspacefolder;
+        }
+        else {
+            let message = "Working folder not found, open a folder an try again";
+            this.debugHandler.log('error', message);
+            throw new Error(message);
+        }
+    }
+}
+exports.PathController = PathController;
+
+
+/***/ }),
+/* 12 */
+/***/ ((module) => {
+
+module.exports = require("path");
+
+/***/ }),
+/* 13 */
+/***/ ((__unused_webpack_module, exports) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.PathValues = void 0;
+class PathValues {
+    constructor(sushiConfigPath, ressourceFolderPath) {
+        this.sushiConfigPath = sushiConfigPath;
+        this.ressourceFolderPath = ressourceFolderPath;
+    }
+}
+exports.PathValues = PathValues;
+
+
+/***/ }),
+/* 14 */
+/***/ ((module) => {
+
+module.exports = require("fs");
+
+/***/ }),
+/* 15 */
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.HapiController = void 0;
 const vscode = __webpack_require__(1);
 const diagnosticController_1 = __webpack_require__(7);
-const hapiWrapper_1 = __webpack_require__(12);
-const hapiOutputParser_1 = __webpack_require__(41);
-const configHandler_1 = __webpack_require__(42);
-const fileConnector_1 = __webpack_require__(44);
-const errorHandler_1 = __webpack_require__(46);
-const notificationController_1 = __webpack_require__(47);
+const hapiWrapper_1 = __webpack_require__(16);
+const hapiOutputParser_1 = __webpack_require__(17);
+const configHandler_1 = __webpack_require__(19);
+const fileConnector_1 = __webpack_require__(21);
+const errorHandler_1 = __webpack_require__(23);
+const notificationController_1 = __webpack_require__(24);
+const pathController_1 = __webpack_require__(11);
+const dependencyController_1 = __webpack_require__(25);
+const url = __webpack_require__(53);
 class HapiController {
-    constructor(diagnosticCollection) {
-        this.configHandler = new configHandler_1.ConfigHandler();
-        this.hapiWrapper = new hapiWrapper_1.HapiWrapper(this.configHandler);
-        this.diagnosticController = new diagnosticController_1.DiagnosticController(diagnosticCollection);
-        this.hapiOutputParser = new hapiOutputParser_1.HapiOutputParser();
-        this.fileConnector = new fileConnector_1.FileConnector(this.configHandler);
-        this.errorHandler = new errorHandler_1.ErrorHandler();
-        this.notificationController = new notificationController_1.NotificationController();
+    constructor(debugHandler, diagnosticCollection) {
+        this.debugHandler = debugHandler;
+        this.diagnosticController = new diagnosticController_1.DiagnosticController(this.debugHandler, diagnosticCollection);
+        this.configHandler = new configHandler_1.ConfigHandler(this.debugHandler);
+        this.pathController = new pathController_1.PathController(this.debugHandler);
+        this.dependencyController = new dependencyController_1.DependencyController(this.debugHandler, this.pathController);
+        this.hapiWrapper = new hapiWrapper_1.HapiWrapper(this.debugHandler, this.configHandler);
+        this.hapiOutputParser = new hapiOutputParser_1.HapiOutputParser(this.debugHandler);
+        this.fileConnector = new fileConnector_1.FileConnector(this.debugHandler);
+        this.errorHandler = new errorHandler_1.ErrorHandler(this.debugHandler);
+        this.notificationController = new notificationController_1.NotificationController(this.debugHandler);
     }
-    execute() {
-        this.diagnosticController.clearDiagnosticCollection();
-        var currentFile = vscode.window.activeTextEditor?.document.uri;
-        if (currentFile) {
-            let filesForValidation = this.fileConnector.identifyGeneratedRessources(currentFile);
-            this.validate(filesForValidation);
+    async execute() {
+        try {
+            var currentFileUri = vscode.window.activeTextEditor?.document.uri;
+            if (currentFileUri) {
+                const currentFilePath = currentFileUri.fsPath;
+                const pathValues = await this.pathController.getPathVariables();
+                this.debugHandler.log("info", "Current file is :'" + currentFilePath + "'");
+                let filesForValidation = this.fileConnector.identifyGeneratedRessources(currentFileUri, pathValues.ressourceFolderPath);
+                this.validate(pathValues, filesForValidation);
+            }
+        }
+        catch (e) {
+            this.debugHandler.log("error", e, true);
         }
     }
-    validate(filesForValidation) {
+    async validate(pathValues, filesForValidation) {
         this.notificationController.notifyStarted(filesForValidation);
-        this.hapiWrapper.getConsoleOutput(filesForValidation)
-            .then((consoleOutput) => {
-            this.processValidationResults(consoleOutput);
+        const dependencyList = await this.dependencyController.getDependenciesAsIgList(pathValues);
+        const consoleOutput = await this.hapiWrapper.getConsoleOutput(filesForValidation, dependencyList);
+        this.processValidationResults(consoleOutput);
+    }
+    validateThen(filesForValidation) {
+        this.notificationController.notifyStarted(filesForValidation);
+        this.pathController.getPathVariables()
+            .then((pathValues) => {
+            this.dependencyController.getDependenciesAsIgList(pathValues)
+                .then((dependencylist) => {
+                this.hapiWrapper.getConsoleOutput(filesForValidation, dependencylist)
+                    .then((consoleOutput) => {
+                    this.processValidationResults(consoleOutput);
+                });
+            });
         }).catch((error) => {
-            this.errorHandler.handleError(error);
+            this.debugHandler.log("error", error, true);
         });
     }
     processValidationResults(consoleOutput) {
         var validationResults = this.hapiOutputParser.getValidationResults(consoleOutput);
+        this.diagnosticController.clearDiagnosticCollection();
         validationResults.forEach((result) => {
             this.diagnosticController.addDiagnostics(result.diagnostics);
             this.notificationController.notifyCompleted(result.file + " " + result.summary);
@@ -359,35 +484,34 @@ exports.HapiController = HapiController;
 
 
 /***/ }),
-/* 12 */
+/* 16 */
 /***/ ((__unused_webpack_module, exports, __webpack_require__) => {
 
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.HapiWrapper = void 0;
 const processController_1 = __webpack_require__(4);
-const dependencyController_1 = __webpack_require__(13);
 class HapiWrapper {
-    constructor(configHandler) {
-        this.processController = new processController_1.ProcessController();
-        this.dependencyController = new dependencyController_1.DependencyController(configHandler);
+    constructor(debugHandler, configHandler) {
+        this.debugHandler = debugHandler;
+        this.processController = new processController_1.ProcessController(this.debugHandler);
         this.validatorDestination = configHandler.getFilePathFromConfig("HapiValidator.Executable");
         this.proxyConfig = configHandler.getProxySettings("HapiValidator.Proxy");
     }
-    async getConsoleOutput(filesToValidate) {
+    async getConsoleOutput(filesToValidate, dependencies) {
         //TODO: Check validator available, if not ask to download?!
-        return new Promise((resolve, reject) => {
+        return new Promise(async (resolve, reject) => {
             let args = [];
             args.push(this.validatorDestination);
             args.push(`-version 4.0.1`);
             args.push(this.formatProxySettings());
-            this.dependencyController.getDependenciesAsIgList().forEach(dep => {
+            dependencies.forEach(dep => {
                 args.push(dep);
             });
             filesToValidate.forEach((file) => {
                 args.push(file);
             });
-            let output = this.processController.execShellCommand_old('java -jar', args, "Hapi");
+            let output = this.processController.execShellCommandSync('java -jar', args, "Hapi");
             console.log(output);
             resolve(output);
         });
@@ -407,34 +531,327 @@ exports.HapiWrapper = HapiWrapper;
 
 
 /***/ }),
-/* 13 */
+/* 17 */
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.HapiOutputParser = void 0;
+const vscode_1 = __webpack_require__(1);
+const diagnostic_1 = __webpack_require__(10);
+const validationResult_1 = __webpack_require__(18);
+class HapiOutputParser {
+    constructor(debugHandler) {
+        this.debugHandler = debugHandler;
+    }
+    getValidationResults(logOutput) {
+        const files = this.getFilesValidated(logOutput);
+        let validationResults = [];
+        files.forEach(validationResult => {
+            let diagnostics = this.parseFileDetails(validationResult.text, validationResult.file);
+            validationResult.setDiagnostics(diagnostics);
+            console.log("Found " + validationResult.diagnostics.length + " Diagnostics in File " + validationResult.file);
+            validationResults.push(validationResult);
+        });
+        return validationResults;
+    }
+    getFilesValidated(logOutput) {
+        const regex = /-- (?<filename>.*) -+\n(?<summary>.*)\n(?<text>(.+\n)*)-{10,}/gm;
+        let m;
+        let files = [];
+        while ((m = regex.exec(logOutput)) !== null) {
+            if (m.index === regex.lastIndex) {
+                regex.lastIndex++;
+            }
+            if (m.groups?.filename) {
+                files.push(new validationResult_1.ValidationResult(m.groups.filename, m.groups?.summary, m.groups?.text));
+            }
+        }
+        return files;
+    }
+    parseFileDetails(logOutput, fileValidated) {
+        const regex = /(\s\s((?<severity>\w+)\s@\s(?<path>.*)\s(\(line\s(?<line_from>\d+).\scol(?<col_from>\d+)\))?:\s(?<message>.*))\n)/gm;
+        let m;
+        let output = [];
+        while ((m = regex.exec(logOutput)) !== null) {
+            if (m.index === regex.lastIndex) {
+                regex.lastIndex++;
+            }
+            var severityType = vscode_1.DiagnosticSeverity.Error;
+            if (m.groups?.severity === "warn") {
+                severityType = vscode_1.DiagnosticSeverity.Warning;
+            }
+            if (m.groups?.message) {
+                var lineFrom = +(m.groups?.line_from) - 1;
+                var colFrom = 0;
+                if (m.groups?.col_from) {
+                    colFrom = +(m.groups?.col_from) - 1;
+                }
+                output.push(new diagnostic_1.Diagnostic(severityType, m.groups?.path + " | " + m.groups?.message, fileValidated, new vscode_1.Range(lineFrom, colFrom, lineFrom, 200)));
+            }
+        }
+        return output;
+    }
+}
+exports.HapiOutputParser = HapiOutputParser;
+
+
+/***/ }),
+/* 18 */
+/***/ ((__unused_webpack_module, exports) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.ValidationResult = void 0;
+class ValidationResult {
+    constructor(file, summary, text) {
+        this.file = file;
+        this.summary = summary;
+        this.text = text;
+        this.diagnostics = [];
+    }
+    addDiagnostic(diagnostic) {
+        this.diagnostics.push(diagnostic);
+    }
+    setDiagnostics(diagnostics) {
+        this.diagnostics = diagnostics;
+    }
+}
+exports.ValidationResult = ValidationResult;
+
+
+/***/ }),
+/* 19 */
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.ConfigHandler = void 0;
+const vscode = __webpack_require__(1);
+const fs = __webpack_require__(14);
+const proxySettings_1 = __webpack_require__(20);
+class ConfigHandler {
+    constructor(debugHandler) {
+        this.debugHandler = debugHandler;
+    }
+    getActualConfiguration() {
+        return vscode.workspace.getConfiguration('codfsh');
+    }
+    getFilePathFromConfig(section) {
+        let config = this.getActualConfiguration();
+        let path = config.get(section);
+        return this.check(path, section);
+    }
+    getProxySettings(section) {
+        let config = this.getActualConfiguration();
+        let active = config.get(section + '.enabled');
+        let address = config.get(section + '.ipAddress');
+        active = this.isBoolSectionDefined(active, section + '.enabled');
+        address = this.isStringSectionDefined(address, section + '.ipAddress');
+        return new proxySettings_1.ProxySettings(active, address);
+    }
+    check(path, section) {
+        path = this.isStringSectionDefined(path, section);
+        if (!fs.existsSync(path)) {
+            throw new Error("Specified " + section + " defined in the settings is incorrect.");
+        }
+        return path;
+    }
+    isStringSectionDefined(result, section) {
+        if (result === undefined) {
+            throw new Error(section + " is not defined in the settings of this extenion.");
+        }
+        return result;
+    }
+    isBoolSectionDefined(result, section) {
+        if (result === undefined) {
+            throw new Error(section + " is not defined in the settings of this extenion.");
+        }
+        return result;
+    }
+}
+exports.ConfigHandler = ConfigHandler;
+
+
+/***/ }),
+/* 20 */
+/***/ ((__unused_webpack_module, exports) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.ProxySettings = void 0;
+class ProxySettings {
+    constructor(active, address) {
+        this.active = active;
+        this.address = address;
+    }
+}
+exports.ProxySettings = ProxySettings;
+
+
+/***/ }),
+/* 21 */
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.FileConnector = void 0;
+const fshParser_1 = __webpack_require__(22);
+const fs = __webpack_require__(14);
+const path_1 = __webpack_require__(12);
+class FileConnector {
+    constructor(debugHandler) {
+        this.debugHandler = debugHandler;
+        this.fshParser = new fshParser_1.FshParser();
+    }
+    identifyGeneratedRessources(currentfile, ressourcesFolder) {
+        let resultfiles = [];
+        if (this.isGeneratedFile(currentfile)) {
+            this.debugHandler.log("info", "Found current active file is for Hapi Validation: '" + currentfile.fsPath + "'");
+            resultfiles.push((0, path_1.join)(currentfile.fsPath));
+            return resultfiles;
+        }
+        let foundIds = this.searchForIdsInFile(currentfile.fsPath);
+        let files = this.searchGeneratedFileWithId(foundIds, ressourcesFolder);
+        return files;
+    }
+    searchGeneratedFileWithId(ids, ressourcesFolder) {
+        let resultfiles = [];
+        let generatedFolder = (0, path_1.join)(ressourcesFolder, 'fsh-generated', 'resources');
+        let files = fs.readdirSync(generatedFolder);
+        ids.forEach((id) => {
+            files.forEach(file => {
+                if ((0, path_1.basename)(file).includes(id.replace('"', ""))) {
+                    const filepPath = (0, path_1.join)(generatedFolder, file);
+                    this.debugHandler.log("info", "Found file which was generated from this file for Hapi Validation: '" + filepPath + "'");
+                    resultfiles.push(filepPath);
+                }
+            });
+        });
+        if (resultfiles.length === 0) {
+            throw new Error("Unable to identify generated files from this file.");
+        }
+        return resultfiles;
+    }
+    isGeneratedFile(currentfile) {
+        return currentfile.path.indexOf("fsh-generated") > -1;
+    }
+    searchForIdsInFile(currentfile) {
+        let fshContent = fs.readFileSync((0, path_1.join)(currentfile), 'utf8');
+        return this.fshParser.getIdsFromFshFile(fshContent);
+    }
+}
+exports.FileConnector = FileConnector;
+
+
+/***/ }),
+/* 22 */
+/***/ ((__unused_webpack_module, exports) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.FshParser = void 0;
+class FshParser {
+    getIdsFromFshFile(fshContent) {
+        const regex = /(I|i)d\s*(:|=)\s*"*(?<id>.*)"*/gm;
+        let m;
+        let output = [];
+        while ((m = regex.exec(fshContent)) !== null) {
+            if (m.index === regex.lastIndex) {
+                regex.lastIndex++;
+            }
+            if (m.groups) {
+                output.push(m.groups.id);
+            }
+        }
+        return output;
+    }
+}
+exports.FshParser = FshParser;
+
+
+/***/ }),
+/* 23 */
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.ErrorHandler = void 0;
+const vscode = __webpack_require__(1);
+class ErrorHandler {
+    constructor(debugHandler) {
+        this.debugHandler = debugHandler;
+    }
+    handleError(error) {
+        vscode.window.showErrorMessage(error, ...['Ok', 'Resolve']).then(selection => {
+            //TODO: Make specific Errors resolve able for example by downloaded missing dependencies
+            console.log(selection);
+        });
+    }
+}
+exports.ErrorHandler = ErrorHandler;
+
+
+/***/ }),
+/* 24 */
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.NotificationController = void 0;
+const vscode = __webpack_require__(1);
+var path = __webpack_require__(12);
+class NotificationController {
+    constructor(debugHandler) {
+        this.debugHandler = debugHandler;
+    }
+    notifyStarted(filesForValidation) {
+        filesForValidation.forEach(file => {
+            vscode.window.showInformationMessage("Running Hapi for '" + path.basename(file) + "'...");
+        });
+    }
+    notifyCompleted(fileToValidate) {
+        vscode.window.showInformationMessage("Hapi completed for '" + path.basename(fileToValidate) + ".", 'Open').then(selection => {
+            if (selection === 'Open') {
+                vscode.workspace.openTextDocument(fileToValidate).then(doc => {
+                    vscode.window.showTextDocument(doc);
+                });
+            }
+        });
+    }
+}
+exports.NotificationController = NotificationController;
+
+
+/***/ }),
+/* 25 */
 /***/ ((__unused_webpack_module, exports, __webpack_require__) => {
 
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.DependencyController = void 0;
-const dependency_1 = __webpack_require__(14);
+const dependency_1 = __webpack_require__(26);
 const vscode = __webpack_require__(1);
-const path_1 = __webpack_require__(6);
-const yaml = __webpack_require__(15);
-const fs = __webpack_require__(40);
+const path_1 = __webpack_require__(12);
+const yaml = __webpack_require__(27);
+const fs = __webpack_require__(14);
 class DependencyController {
-    constructor(configHandler) {
-        this.sushiConfigPath = configHandler.getFilePathFromConfig("HapiValidator.sushi-config.path");
-        this.ressourcePath = configHandler.getFilePathFromConfig("RessourcesFolder");
+    constructor(debugHandler, pathController) {
+        this.debugHandler = debugHandler;
+        this.pathController = pathController;
     }
-    getDependenciesAsIgList() {
+    async getDependenciesAsIgList(pathValues) {
         let result = [];
-        let dependencies = this.parseDependencies();
+        let dependencies = this.parseDependencies(pathValues.sushiConfigPath);
         dependencies.forEach((dependency) => {
             result.push(`-ig ${dependency.name}#${dependency.version}`);
         });
-        let generatedFolderPath = this.getGeneratedFolderPath();
+        let generatedFolderPath = this.getGeneratedFolderPath(pathValues.ressourceFolderPath);
         result.push(`-ig ${generatedFolderPath}`);
         return result;
     }
-    parseDependencies() {
-        let config = this.parseConfig();
+    parseDependencies(sushiConfigPath) {
+        let config = this.parseConfig(sushiConfigPath);
         let dependencies = [];
         if (config?.dependencies) {
             for (var file in config.dependencies) {
@@ -442,15 +859,15 @@ class DependencyController {
             }
         }
         else {
-            vscode.window.showInformationMessage('Warning: No dependencies found in ' + this.sushiConfigPath);
+            vscode.window.showInformationMessage('Warning: No dependencies found in ' + sushiConfigPath);
         }
         return dependencies;
     }
-    getGeneratedFolderPath() {
-        return (0, path_1.join)(this.ressourcePath, 'fsh-generated', 'resources');
+    getGeneratedFolderPath(ressourceFolderPath) {
+        return (0, path_1.join)(ressourceFolderPath, 'fsh-generated', 'resources');
     }
-    parseConfig() {
-        const doc = yaml.load(fs.readFileSync(this.sushiConfigPath, 'utf8'));
+    parseConfig(sushiConfigPath) {
+        const doc = yaml.load(fs.readFileSync(sushiConfigPath, 'utf8'));
         return doc;
     }
 }
@@ -458,7 +875,7 @@ exports.DependencyController = DependencyController;
 
 
 /***/ }),
-/* 14 */
+/* 26 */
 /***/ ((__unused_webpack_module, exports) => {
 
 
@@ -474,14 +891,14 @@ exports.Dependency = Dependency;
 
 
 /***/ }),
-/* 15 */
+/* 27 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 
 
 
-var loader = __webpack_require__(16);
-var dumper = __webpack_require__(39);
+var loader = __webpack_require__(28);
+var dumper = __webpack_require__(51);
 
 
 function renamed(from, to) {
@@ -492,32 +909,32 @@ function renamed(from, to) {
 }
 
 
-module.exports.Type = __webpack_require__(25);
-module.exports.Schema = __webpack_require__(24);
-module.exports.FAILSAFE_SCHEMA = __webpack_require__(23);
-module.exports.JSON_SCHEMA = __webpack_require__(22);
-module.exports.CORE_SCHEMA = __webpack_require__(21);
-module.exports.DEFAULT_SCHEMA = __webpack_require__(20);
+module.exports.Type = __webpack_require__(37);
+module.exports.Schema = __webpack_require__(36);
+module.exports.FAILSAFE_SCHEMA = __webpack_require__(35);
+module.exports.JSON_SCHEMA = __webpack_require__(34);
+module.exports.CORE_SCHEMA = __webpack_require__(33);
+module.exports.DEFAULT_SCHEMA = __webpack_require__(32);
 module.exports.load                = loader.load;
 module.exports.loadAll             = loader.loadAll;
 module.exports.dump                = dumper.dump;
-module.exports.YAMLException = __webpack_require__(18);
+module.exports.YAMLException = __webpack_require__(30);
 
 // Re-export all types in case user wants to create custom schema
 module.exports.types = {
-  binary:    __webpack_require__(35),
-  float:     __webpack_require__(32),
-  map:       __webpack_require__(28),
-  null:      __webpack_require__(29),
-  pairs:     __webpack_require__(37),
-  set:       __webpack_require__(38),
-  timestamp: __webpack_require__(33),
-  bool:      __webpack_require__(30),
-  int:       __webpack_require__(31),
-  merge:     __webpack_require__(34),
-  omap:      __webpack_require__(36),
-  seq:       __webpack_require__(27),
-  str:       __webpack_require__(26)
+  binary:    __webpack_require__(47),
+  float:     __webpack_require__(44),
+  map:       __webpack_require__(40),
+  null:      __webpack_require__(41),
+  pairs:     __webpack_require__(49),
+  set:       __webpack_require__(50),
+  timestamp: __webpack_require__(45),
+  bool:      __webpack_require__(42),
+  int:       __webpack_require__(43),
+  merge:     __webpack_require__(46),
+  omap:      __webpack_require__(48),
+  seq:       __webpack_require__(39),
+  str:       __webpack_require__(38)
 };
 
 // Removed functions from JS-YAML 3.0.x
@@ -527,17 +944,17 @@ module.exports.safeDump            = renamed('safeDump', 'dump');
 
 
 /***/ }),
-/* 16 */
+/* 28 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 
 
 /*eslint-disable max-len,no-use-before-define*/
 
-var common              = __webpack_require__(17);
-var YAMLException       = __webpack_require__(18);
-var makeSnippet         = __webpack_require__(19);
-var DEFAULT_SCHEMA      = __webpack_require__(20);
+var common              = __webpack_require__(29);
+var YAMLException       = __webpack_require__(30);
+var makeSnippet         = __webpack_require__(31);
+var DEFAULT_SCHEMA      = __webpack_require__(32);
 
 
 var _hasOwnProperty = Object.prototype.hasOwnProperty;
@@ -2260,7 +2677,7 @@ module.exports.load    = load;
 
 
 /***/ }),
-/* 17 */
+/* 29 */
 /***/ ((module) => {
 
 
@@ -2325,7 +2742,7 @@ module.exports.extend         = extend;
 
 
 /***/ }),
-/* 18 */
+/* 30 */
 /***/ ((module) => {
 
 // YAML error class. http://stackoverflow.com/questions/8458984
@@ -2386,13 +2803,13 @@ module.exports = YAMLException;
 
 
 /***/ }),
-/* 19 */
+/* 31 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 
 
 
-var common = __webpack_require__(17);
+var common = __webpack_require__(29);
 
 
 // get snippet for a single line, respecting maxLength
@@ -2493,7 +2910,7 @@ module.exports = makeSnippet;
 
 
 /***/ }),
-/* 20 */
+/* 32 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 // JS-YAML's default schema for `safeLoad` function.
@@ -2506,22 +2923,22 @@ module.exports = makeSnippet;
 
 
 
-module.exports = (__webpack_require__(21).extend)({
+module.exports = (__webpack_require__(33).extend)({
   implicit: [
-    __webpack_require__(33),
-    __webpack_require__(34)
+    __webpack_require__(45),
+    __webpack_require__(46)
   ],
   explicit: [
-    __webpack_require__(35),
-    __webpack_require__(36),
-    __webpack_require__(37),
-    __webpack_require__(38)
+    __webpack_require__(47),
+    __webpack_require__(48),
+    __webpack_require__(49),
+    __webpack_require__(50)
   ]
 });
 
 
 /***/ }),
-/* 21 */
+/* 33 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 // Standard YAML's Core schema.
@@ -2534,11 +2951,11 @@ module.exports = (__webpack_require__(21).extend)({
 
 
 
-module.exports = __webpack_require__(22);
+module.exports = __webpack_require__(34);
 
 
 /***/ }),
-/* 22 */
+/* 34 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 // Standard YAML's JSON schema.
@@ -2552,18 +2969,18 @@ module.exports = __webpack_require__(22);
 
 
 
-module.exports = (__webpack_require__(23).extend)({
+module.exports = (__webpack_require__(35).extend)({
   implicit: [
-    __webpack_require__(29),
-    __webpack_require__(30),
-    __webpack_require__(31),
-    __webpack_require__(32)
+    __webpack_require__(41),
+    __webpack_require__(42),
+    __webpack_require__(43),
+    __webpack_require__(44)
   ]
 });
 
 
 /***/ }),
-/* 23 */
+/* 35 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 // Standard YAML's Failsafe schema.
@@ -2573,28 +2990,28 @@ module.exports = (__webpack_require__(23).extend)({
 
 
 
-var Schema = __webpack_require__(24);
+var Schema = __webpack_require__(36);
 
 
 module.exports = new Schema({
   explicit: [
-    __webpack_require__(26),
-    __webpack_require__(27),
-    __webpack_require__(28)
+    __webpack_require__(38),
+    __webpack_require__(39),
+    __webpack_require__(40)
   ]
 });
 
 
 /***/ }),
-/* 24 */
+/* 36 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 
 
 /*eslint-disable max-len*/
 
-var YAMLException = __webpack_require__(18);
-var Type          = __webpack_require__(25);
+var YAMLException = __webpack_require__(30);
+var Type          = __webpack_require__(37);
 
 
 function compileList(schema, name) {
@@ -2713,12 +3130,12 @@ module.exports = Schema;
 
 
 /***/ }),
-/* 25 */
+/* 37 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 
 
-var YAMLException = __webpack_require__(18);
+var YAMLException = __webpack_require__(30);
 
 var TYPE_CONSTRUCTOR_OPTIONS = [
   'kind',
@@ -2785,12 +3202,12 @@ module.exports = Type;
 
 
 /***/ }),
-/* 26 */
+/* 38 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 
 
-var Type = __webpack_require__(25);
+var Type = __webpack_require__(37);
 
 module.exports = new Type('tag:yaml.org,2002:str', {
   kind: 'scalar',
@@ -2799,12 +3216,12 @@ module.exports = new Type('tag:yaml.org,2002:str', {
 
 
 /***/ }),
-/* 27 */
+/* 39 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 
 
-var Type = __webpack_require__(25);
+var Type = __webpack_require__(37);
 
 module.exports = new Type('tag:yaml.org,2002:seq', {
   kind: 'sequence',
@@ -2813,12 +3230,12 @@ module.exports = new Type('tag:yaml.org,2002:seq', {
 
 
 /***/ }),
-/* 28 */
+/* 40 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 
 
-var Type = __webpack_require__(25);
+var Type = __webpack_require__(37);
 
 module.exports = new Type('tag:yaml.org,2002:map', {
   kind: 'mapping',
@@ -2827,12 +3244,12 @@ module.exports = new Type('tag:yaml.org,2002:map', {
 
 
 /***/ }),
-/* 29 */
+/* 41 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 
 
-var Type = __webpack_require__(25);
+var Type = __webpack_require__(37);
 
 function resolveYamlNull(data) {
   if (data === null) return true;
@@ -2868,12 +3285,12 @@ module.exports = new Type('tag:yaml.org,2002:null', {
 
 
 /***/ }),
-/* 30 */
+/* 42 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 
 
-var Type = __webpack_require__(25);
+var Type = __webpack_require__(37);
 
 function resolveYamlBoolean(data) {
   if (data === null) return false;
@@ -2909,13 +3326,13 @@ module.exports = new Type('tag:yaml.org,2002:bool', {
 
 
 /***/ }),
-/* 31 */
+/* 43 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 
 
-var common = __webpack_require__(17);
-var Type   = __webpack_require__(25);
+var common = __webpack_require__(29);
+var Type   = __webpack_require__(37);
 
 function isHexCode(c) {
   return ((0x30/* 0 */ <= c) && (c <= 0x39/* 9 */)) ||
@@ -3071,13 +3488,13 @@ module.exports = new Type('tag:yaml.org,2002:int', {
 
 
 /***/ }),
-/* 32 */
+/* 44 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 
 
-var common = __webpack_require__(17);
-var Type   = __webpack_require__(25);
+var common = __webpack_require__(29);
+var Type   = __webpack_require__(37);
 
 var YAML_FLOAT_PATTERN = new RegExp(
   // 2.5e4, 2.5 and integers
@@ -3174,12 +3591,12 @@ module.exports = new Type('tag:yaml.org,2002:float', {
 
 
 /***/ }),
-/* 33 */
+/* 45 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 
 
-var Type = __webpack_require__(25);
+var Type = __webpack_require__(37);
 
 var YAML_DATE_REGEXP = new RegExp(
   '^([0-9][0-9][0-9][0-9])'          + // [1] year
@@ -3268,12 +3685,12 @@ module.exports = new Type('tag:yaml.org,2002:timestamp', {
 
 
 /***/ }),
-/* 34 */
+/* 46 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 
 
-var Type = __webpack_require__(25);
+var Type = __webpack_require__(37);
 
 function resolveYamlMerge(data) {
   return data === '<<' || data === null;
@@ -3286,7 +3703,7 @@ module.exports = new Type('tag:yaml.org,2002:merge', {
 
 
 /***/ }),
-/* 35 */
+/* 47 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 
@@ -3294,7 +3711,7 @@ module.exports = new Type('tag:yaml.org,2002:merge', {
 /*eslint-disable no-bitwise*/
 
 
-var Type = __webpack_require__(25);
+var Type = __webpack_require__(37);
 
 
 // [ 64, 65, 66 ] -> [ padding, CR, LF ]
@@ -3417,12 +3834,12 @@ module.exports = new Type('tag:yaml.org,2002:binary', {
 
 
 /***/ }),
-/* 36 */
+/* 48 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 
 
-var Type = __webpack_require__(25);
+var Type = __webpack_require__(37);
 
 var _hasOwnProperty = Object.prototype.hasOwnProperty;
 var _toString       = Object.prototype.toString;
@@ -3467,12 +3884,12 @@ module.exports = new Type('tag:yaml.org,2002:omap', {
 
 
 /***/ }),
-/* 37 */
+/* 49 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 
 
-var Type = __webpack_require__(25);
+var Type = __webpack_require__(37);
 
 var _toString = Object.prototype.toString;
 
@@ -3526,12 +3943,12 @@ module.exports = new Type('tag:yaml.org,2002:pairs', {
 
 
 /***/ }),
-/* 38 */
+/* 50 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 
 
-var Type = __webpack_require__(25);
+var Type = __webpack_require__(37);
 
 var _hasOwnProperty = Object.prototype.hasOwnProperty;
 
@@ -3561,16 +3978,16 @@ module.exports = new Type('tag:yaml.org,2002:set', {
 
 
 /***/ }),
-/* 39 */
+/* 51 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 
 
 /*eslint-disable no-use-before-define*/
 
-var common              = __webpack_require__(17);
-var YAMLException       = __webpack_require__(18);
-var DEFAULT_SCHEMA      = __webpack_require__(20);
+var common              = __webpack_require__(29);
+var YAMLException       = __webpack_require__(30);
+var DEFAULT_SCHEMA      = __webpack_require__(32);
 
 var _toString       = Object.prototype.toString;
 var _hasOwnProperty = Object.prototype.hasOwnProperty;
@@ -4532,294 +4949,43 @@ module.exports.dump = dump;
 
 
 /***/ }),
-/* 40 */
-/***/ ((module) => {
-
-module.exports = require("fs");
-
-/***/ }),
-/* 41 */
+/* 52 */
 /***/ ((__unused_webpack_module, exports, __webpack_require__) => {
 
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.HapiOutputParser = void 0;
-const vscode_1 = __webpack_require__(1);
-const diagnostic_1 = __webpack_require__(10);
-const validationResult_1 = __webpack_require__(49);
-class HapiOutputParser {
-    getValidationResults(logOutput) {
-        const files = this.getFilesValidated(logOutput);
-        let validationResults = [];
-        files.forEach(validationResult => {
-            let diagnostics = this.parseFileDetails(validationResult.text, validationResult.file);
-            validationResult.setDiagnostics(diagnostics);
-            console.log("Found " + validationResult.diagnostics.length + " Diagnostics in File " + validationResult.file);
-            validationResults.push(validationResult);
-        });
-        return validationResults;
-    }
-    getFilesValidated(logOutput) {
-        const regex = /-- (?<filename>.*) -+\n(?<summary>.*)\n(?<text>(.+\n)*)-{10,}/gm;
-        let m;
-        let files = [];
-        while ((m = regex.exec(logOutput)) !== null) {
-            if (m.index === regex.lastIndex) {
-                regex.lastIndex++;
-            }
-            if (m.groups?.filename) {
-                files.push(new validationResult_1.ValidationResult(m.groups.filename, m.groups?.summary, m.groups?.text));
-            }
-        }
-        return files;
-    }
-    parseFileDetails(logOutput, fileValidated) {
-        const regex = /(\s\s((?<severity>\w+)\s@\s(?<path>.*)\s(\(line\s(?<line_from>\d+).\scol(?<col_from>\d+)\))?:\s(?<message>.*))\n)/gm;
-        let m;
-        let output = [];
-        while ((m = regex.exec(logOutput)) !== null) {
-            if (m.index === regex.lastIndex) {
-                regex.lastIndex++;
-            }
-            var severityType = vscode_1.DiagnosticSeverity.Error;
-            if (m.groups?.severity === "warn") {
-                severityType = vscode_1.DiagnosticSeverity.Warning;
-            }
-            if (m.groups?.message) {
-                var lineFrom = +(m.groups?.line_from) - 1;
-                var colFrom = 0;
-                if (m.groups?.col_from) {
-                    colFrom = +(m.groups?.col_from) - 1;
-                }
-                output.push(new diagnostic_1.Diagnostic(severityType, m.groups?.path + " | " + m.groups?.message, fileValidated, new vscode_1.Range(lineFrom, colFrom, lineFrom, 200)));
-            }
-        }
-        return output;
-    }
-}
-exports.HapiOutputParser = HapiOutputParser;
-
-
-/***/ }),
-/* 42 */
-/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.ConfigHandler = void 0;
+exports.DebugHandler = void 0;
 const vscode = __webpack_require__(1);
-const fs = __webpack_require__(40);
-const proxySettings_1 = __webpack_require__(43);
-class ConfigHandler {
+class DebugHandler {
     constructor() {
-        this.config = vscode.workspace.getConfiguration('codfsh');
+        this.output = vscode.window.createOutputChannel("codfsh debug");
+        this.output.clear();
     }
-    getFilePathFromConfig(section) {
-        let path = this.config.get(section);
-        return this.check(path, section);
-    }
-    getProxySettings(section) {
-        let active = this.config.get(section + '.enabled');
-        let address = this.config.get(section + '.ipAddress');
-        active = this.isBoolSectionDefined(active, section + '.enabled');
-        address = this.isStringSectionDefined(address, section + '.ipAddress');
-        return new proxySettings_1.ProxySettings(active, address);
-    }
-    check(path, section) {
-        path = this.isStringSectionDefined(path, section);
-        if (!fs.existsSync(path)) {
-            throw new Error("Specified " + section + " defined in the settings is incorrect.");
-        }
-        return path;
-    }
-    isStringSectionDefined(result, section) {
-        if (result === undefined) {
-            throw new Error(section + " is not defined in the settings of this extenion.");
-        }
-        return result;
-    }
-    isBoolSectionDefined(result, section) {
-        if (result === undefined) {
-            throw new Error(section + " is not defined in the settings of this extenion.");
-        }
-        return result;
-    }
-}
-exports.ConfigHandler = ConfigHandler;
-
-
-/***/ }),
-/* 43 */
-/***/ ((__unused_webpack_module, exports) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.ProxySettings = void 0;
-class ProxySettings {
-    constructor(active, address) {
-        this.active = active;
-        this.address = address;
-    }
-}
-exports.ProxySettings = ProxySettings;
-
-
-/***/ }),
-/* 44 */
-/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.FileConnector = void 0;
-const fshParser_1 = __webpack_require__(45);
-const fs = __webpack_require__(40);
-const path_1 = __webpack_require__(6);
-class FileConnector {
-    constructor(configHandler) {
-        this.fshParser = new fshParser_1.FshParser();
-        this.ressourcesFolder = configHandler.getFilePathFromConfig("RessourcesFolder");
-    }
-    identifyGeneratedRessources(currentfile) {
-        let resultfiles = [];
-        if (this.isGeneratedFile(currentfile)) {
-            resultfiles.push(currentfile.path);
-            return resultfiles;
-        }
-        let foundIds = this.searchForIdsInFile(currentfile.path);
-        let files = this.searchGeneratedFileWithId(foundIds);
-        console.log(files);
-        return files;
-    }
-    searchGeneratedFileWithId(ids) {
-        let resultfiles = [];
-        let ressourcesFolder = (0, path_1.join)(this.ressourcesFolder, 'fsh-generated', 'resources');
-        let files = fs.readdirSync(ressourcesFolder);
-        ids.forEach((id) => {
-            files.forEach(file => {
-                if ((0, path_1.basename)(file).includes(id.replace('"', ""))) {
-                    console.log("found:" + (0, path_1.join)(ressourcesFolder, file));
-                    resultfiles.push((0, path_1.join)(ressourcesFolder, file));
-                }
-            });
-        });
-        if (resultfiles.length === 0) {
-            throw new Error("Unable to identify generated files from this file.");
-        }
-        return resultfiles;
-    }
-    isGeneratedFile(currentfile) {
-        return currentfile.path.indexOf("fsh-generated") > -1;
-    }
-    searchForIdsInFile(currentfile) {
-        let fshContent = fs.readFileSync((0, path_1.join)(currentfile), 'utf8');
-        return this.fshParser.getIdsFromFshFile(fshContent);
-    }
-}
-exports.FileConnector = FileConnector;
-
-
-/***/ }),
-/* 45 */
-/***/ ((__unused_webpack_module, exports) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.FshParser = void 0;
-class FshParser {
-    getIdsFromFshFile(fshContent) {
-        const regex = /(I|i)d\s*(:|=)\s*"*(?<id>.*)"*/gm;
-        let m;
-        let output = [];
-        while ((m = regex.exec(fshContent)) !== null) {
-            if (m.index === regex.lastIndex) {
-                regex.lastIndex++;
+    log(severity, message, escalateToUser = false) {
+        this.output.appendLine(`[${severity.toUpperCase()}]\t${message}`);
+        if (severity.toLowerCase() === "error") {
+            if (escalateToUser) {
+                vscode.window.showErrorMessage(message);
             }
-            if (m.groups) {
-                output.push(m.groups.id);
-            }
+            this.output.show();
+            console.error(message);
         }
-        return output;
-    }
-}
-exports.FshParser = FshParser;
-
-
-/***/ }),
-/* 46 */
-/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.ErrorHandler = void 0;
-const vscode = __webpack_require__(1);
-class ErrorHandler {
-    handleError(error) {
-        vscode.window.showErrorMessage(error, ...['Ok', 'Resolve']).then(selection => {
-            //TODO: Make specific Errors resolve able for example by downloaded missing dependencies
-            console.log(selection);
-        });
-    }
-}
-exports.ErrorHandler = ErrorHandler;
-
-
-/***/ }),
-/* 47 */
-/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.NotificationController = void 0;
-const vscode = __webpack_require__(1);
-var path = __webpack_require__(6);
-class NotificationController {
-    notifyStarted(filesForValidation) {
-        filesForValidation.forEach(file => {
-            vscode.window.showInformationMessage("Running Hapi for '" + path.basename(file) + "'...");
-        });
-    }
-    notifyCompleted(fileToValidate) {
-        vscode.window.showInformationMessage("Hapi completed for '" + path.basename(fileToValidate) + ".", 'Open').then(selection => {
-            if (selection === 'Open') {
-                vscode.workspace.openTextDocument(fileToValidate).then(doc => {
-                    vscode.window.showTextDocument(doc);
-                });
+        else {
+            if (escalateToUser) {
+                vscode.window.showInformationMessage(message);
             }
-        });
+            console.log(message);
+        }
     }
 }
-exports.NotificationController = NotificationController;
+exports.DebugHandler = DebugHandler;
 
 
 /***/ }),
-/* 48 */
+/* 53 */
 /***/ ((module) => {
 
-module.exports = require("node:child_process");
-
-/***/ }),
-/* 49 */
-/***/ ((__unused_webpack_module, exports) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.ValidationResult = void 0;
-class ValidationResult {
-    constructor(file, summary, text) {
-        this.file = file;
-        this.summary = summary;
-        this.text = text;
-        this.diagnostics = [];
-    }
-    addDiagnostic(diagnostic) {
-        this.diagnostics.push(diagnostic);
-    }
-    setDiagnostics(diagnostics) {
-        this.diagnostics = diagnostics;
-    }
-}
-exports.ValidationResult = ValidationResult;
-
+module.exports = require("url");
 
 /***/ })
 /******/ 	]);
@@ -4858,23 +5024,40 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.deactivate = exports.activate = void 0;
 const vscode = __webpack_require__(1);
 const sushiController_1 = __webpack_require__(2);
-const hapiController_1 = __webpack_require__(11);
+const hapiController_1 = __webpack_require__(15);
+const debugHandler_1 = __webpack_require__(52);
 function activate(context) {
-    let diagnosticCollection = vscode.languages.createDiagnosticCollection('fsh');
-    let sushiController = new sushiController_1.SushiController(diagnosticCollection);
-    let hapiController = new hapiController_1.HapiController(diagnosticCollection);
-    let runSushiSubscription = vscode.commands.registerCommand('codfsh.runSushi', () => {
-        sushiController.execute();
-    });
-    let runHapiSubscription = vscode.commands.registerCommand('codfsh.runHapi', () => {
-        hapiController.execute();
-    });
-    let runFhirFshSubscription = vscode.commands.registerCommand('codfsh.runFhirFsh', () => {
-        vscode.window.showInformationMessage('Running Sushi and Hapi!');
-    });
-    context.subscriptions.push(runSushiSubscription);
-    context.subscriptions.push(runHapiSubscription);
-    context.subscriptions.push(runFhirFshSubscription);
+    let debugHandler = new debugHandler_1.DebugHandler();
+    debugHandler.log("info", "Extension started");
+    try {
+        let diagnosticCollection = vscode.languages.createDiagnosticCollection('fsh');
+        let sushiController = new sushiController_1.SushiController(debugHandler, diagnosticCollection);
+        let hapiController = new hapiController_1.HapiController(debugHandler, diagnosticCollection);
+        let runSushiSubscription = vscode.commands.registerCommand('codfsh.runSushi', () => {
+            debugHandler.log("info", "Executing Sushi");
+            sushiController.execute();
+        });
+        let runHapiSubscription = vscode.commands.registerCommand('codfsh.runHapi', () => {
+            debugHandler.log("info", "Executing Hapi");
+            hapiController.execute();
+        });
+        let runFhirFshSubscription = vscode.commands.registerCommand('codfsh.runFhirFsh', () => {
+            debugHandler.log("info", "Executing Sushi and Hapi");
+            vscode.window.showInformationMessage('Running Sushi and Hapi!');
+        });
+        context.subscriptions.push(runSushiSubscription);
+        context.subscriptions.push(runHapiSubscription);
+        context.subscriptions.push(runFhirFshSubscription);
+    }
+    catch (e) {
+        if (typeof e === "string") {
+            debugHandler.log("error", e);
+        }
+        else if (e instanceof Error) {
+            debugHandler.log("error", e.message);
+            vscode.window.showErrorMessage(e.message);
+        }
+    }
 }
 exports.activate = activate;
 function deactivate() { }

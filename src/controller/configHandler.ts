@@ -1,23 +1,29 @@
 import * as vscode from 'vscode';
+import { DebugHandler } from './debugHandler';
 import * as fs from 'fs';
 import { ProxySettings } from '../models/proxySettings';
 
 export class ConfigHandler{
-    
-    config: vscode.WorkspaceConfiguration;
-    
-    constructor(){
-        this.config = vscode.workspace.getConfiguration('codfsh');
+    debugHandler : DebugHandler;
+
+    constructor(debugHandler : DebugHandler){
+        this.debugHandler = debugHandler;
+    }
+   
+    private getActualConfiguration() : vscode.WorkspaceConfiguration {
+        return vscode.workspace.getConfiguration('codfsh');
     }
     
     public getFilePathFromConfig(section: string): string {
-        let path =  this.config.get<string>(section);
+        let config = this.getActualConfiguration();
+        let path =  config.get<string>(section);
         return this.check(path,section);
     }
     
     public getProxySettings(section: string) : ProxySettings {
-        let active =  this.config.get<boolean>(section+'.enabled');
-        let address =  this.config.get<string>(section+'.ipAddress');
+        let config = this.getActualConfiguration();
+        let active =  config.get<boolean>(section+'.enabled');
+        let address =  config.get<string>(section+'.ipAddress');
         active = this.isBoolSectionDefined(active, section+'.enabled');
         address = this.isStringSectionDefined(address, section+'.ipAddress');
         return new ProxySettings(active,address);

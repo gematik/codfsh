@@ -1,13 +1,16 @@
 import * as vscode from 'vscode';
 import { Diagnostic } from "../models/diagnostic";
 import { DiagnosticManipulator } from "./diagnosticManipulator";
+import { DebugHandler } from './debugHandler';
 
 export class DiagnosticController{
 
+    debugHandler : DebugHandler;
     diagnosticManipulator : DiagnosticManipulator;
     diagnosticCollection: vscode.DiagnosticCollection;
 
-    constructor(diagnosticCollection: vscode.DiagnosticCollection) {
+    constructor(debugHandler : DebugHandler, diagnosticCollection: vscode.DiagnosticCollection) {
+        this.debugHandler = debugHandler;
         this.diagnosticCollection = diagnosticCollection;
         this.diagnosticManipulator = new DiagnosticManipulator();
     }
@@ -16,8 +19,8 @@ export class DiagnosticController{
         this.diagnosticCollection.clear();
     }
 
-    public addDiagnostics(diagniostics: Diagnostic[]) {
-        let distinctDiagnosticsPerFile = this.diagnosticManipulator.manipulate(diagniostics);
+    public addDiagnostics(diagnostics: Diagnostic[]) {
+        let distinctDiagnosticsPerFile = this.diagnosticManipulator.manipulate(diagnostics);
         for (const file in distinctDiagnosticsPerFile) {
             if (!this.checkFile(file, distinctDiagnosticsPerFile)){
                 break;
