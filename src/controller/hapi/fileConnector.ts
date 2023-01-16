@@ -1,42 +1,42 @@
 import * as vscode from 'vscode';
+import { DebugHandler } from '../debugHandler';
 import { FshParser } from './fshParser';
 import fs = require('fs');
 import { basename, join } from 'path';
-import { ConfigHandler } from '../configHandler';
 
 export class FileConnector{
 
     fshParser : FshParser;
-    ressourcesFolder : string;
+    debugHandler : DebugHandler;
 
-
-    constructor(configHandler: ConfigHandler){
+    constructor(debugHandler : DebugHandler){
+        this.debugHandler = debugHandler;
         this.fshParser = new FshParser();
-        this.ressourcesFolder = configHandler.getFilePathFromConfig("RessourcesFolder");
     }
 
-    public identifyGeneratedRessources(currentfile: vscode.Uri) : string[] {
+    public identifyGeneratedRessources(currentfile: vscode.Uri, ressourcesFolder: string) : string[] {
         let resultfiles : string[] = [];
         if(this.isGeneratedFile(currentfile)){
-            resultfiles.push(currentfile.path);
+            this.debugHandler.log("info", "Found current active file is for Hapi Validation: '" + currentfile.fsPath + "'");
+            resultfiles.push(join(currentfile.fsPath));
             return resultfiles;
         }
 
-        let foundIds = this.searchForIdsInFile(currentfile.path);
-        let files =  this.searchGeneratedFileWithId(foundIds);
-        console.log(files);
+        let foundIds = this.searchForIdsInFile(currentfile.fsPath);
+        let files =  this.searchGeneratedFileWithId(foundIds, ressourcesFolder);
         return files;
     }
 
-    private searchGeneratedFileWithId(ids: string[]): string[] {
+    private searchGeneratedFileWithId(ids: string[],  ressourcesFolder: string): string[] {
         let resultfiles : string[] = [];
-        let ressourcesFolder = join(this.ressourcesFolder,'fsh-generated','resources');
-        let files = fs.readdirSync(ressourcesFolder);
+        let generatedFolder = join(ressourcesFolder,'fsh-generated','resources');
+        let files = fs.readdirSync(generatedFolder);
         ids.forEach((id) => {
             files.forEach(file => {
                 if(basename(file).includes(id.replace('"',""))){
-                    console.log("found:" + join(ressourcesFolder,file));
-                    resultfiles.push(join(ressourcesFolder,file));
+                    const filepPath = join(generatedFolder,file);
+                    this.debugHandler.log("info", "Found file which was generated from this file for Hapi Validation: '" + filepPath + "'");
+                    resultfiles.push(filepPath);
                 }
             });
 

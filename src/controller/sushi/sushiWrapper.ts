@@ -1,52 +1,32 @@
+import { PathValues } from "../../models/pathValues";
+import { DebugHandler } from "../debugHandler";
+import { PathController } from "../pathController";
 import { ProcessController } from "../processController";
 import { join } from 'path';
 export class SushiWrapper {
 
     processController : ProcessController;
+    debugHandler : DebugHandler;
+    pathController : PathController;
 
-    constructor(){
-        this.processController = new ProcessController();
+    constructor(debugHandler : DebugHandler, pathController : PathController){
+        this.debugHandler = debugHandler;
+        this.pathController = pathController;
+        this.processController = new ProcessController(this.debugHandler);
     }
 
-    public async getConsoleOutput(fshFilePath: string) : Promise<string>  {
-        return new Promise((resolve, reject) => {
-            this.getRessourcePath(fshFilePath).then((ressourcesFolderPath) => {
-                let args = [];
-                args.push(ressourcesFolderPath);
-                args.push('-s');
-                resolve(this.processController.execShellCommand("sushi", args, "Sushi"));
-            }).catch((error) => {
-                reject(error);
-            });
+    public async getConsoleOutput(ressourceFolderPath : string) : Promise<string>  {
+        return new Promise(async (resolve, reject) => {
+            try{
+                    let args : string[] = [];
+                    args.push(ressourceFolderPath);
+                    args.push('-s');
+                    let output = await this.processController.execShellCommandAsync("sushi", args, "Sushi");
+                    resolve(output);
+                }
+                catch(e){
+                    reject(e);
+                }
         });
     }
-
-     private getRessourcePath(fshFilePath:string): Promise<string> {
-        return new Promise((resolve, reject) => {
-            var resPath = this.searchRessourcePath(fshFilePath, '/input/fsh');
-            if(this.isValidPath(resPath)){
-                resolve(resPath);
-            }
-            resPath = this.searchRessourcePath(fshFilePath, '/_preprocessed');
-            if(this.isValidPath(resPath)){
-                resolve(resPath);
-            }
-            reject(new Error("Unable to find folder structure expected by SUSHI for a FSH project"));
-        });
-    }
-
-    private searchRessourcePath(fshFilePath: string, input: string) {
-        var resPath = fshFilePath.split(input)[0];
-        resPath = join(resPath);
-        return resPath;
-    }
-
-    private isValidPath(resPath: string): boolean {
-        if(resPath.split('/').pop() === "Resources"){
-            return true;
-        }
-        return false;
-    }
-
-
 }

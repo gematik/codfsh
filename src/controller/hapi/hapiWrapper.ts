@@ -1,40 +1,44 @@
 import { ProcessController } from "../processController";
 import { ProxySettings } from "../../models/proxySettings";
 import { ConfigHandler } from "../configHandler";
-import { DependencyController } from "../dependencyController";
+import { DebugHandler } from "../debugHandler";
 
 
 export class HapiWrapper{
 
+    debugHandler : DebugHandler;
     processController : ProcessController;
-    dependencyController: DependencyController;
+
     validatorDestination : string;
     proxyConfig: ProxySettings;
 
-    constructor(configHandler: ConfigHandler){
-        this.processController = new ProcessController();
-        this.dependencyController = new DependencyController(configHandler);
+    constructor(debugHandler : DebugHandler, configHandler: ConfigHandler){
+        this.debugHandler = debugHandler;
+        this.processController = new ProcessController(this.debugHandler);
         this.validatorDestination = configHandler.getFilePathFromConfig("HapiValidator.Executable");
         this.proxyConfig =  configHandler.getProxySettings("HapiValidator.Proxy");
     }
 
-    public async getConsoleOutput(filesToValidate: string[]) : Promise<string>  {
+    public async getConsoleOutput(filesToValidate: string[], dependencies: string[])  : Promise<string>  {
         //TODO: Check validator available, if not ask to download?!
-        return new Promise((resolve, reject) => {
+        return new Promise(async (resolve, reject) => {
             let args = [];
             args.push(this.validatorDestination);
             args.push(`-version 4.0.1`);
+            args.push(`-jurisdiction DE`);
+            args.push(`-locale de-DE`);
+            args.push(`-tx n/a`);
+            args.push(`-debug`);
             args.push(this.formatProxySettings());
-            this.dependencyController.getDependenciesAsIgList().forEach(dep => {
+            dependencies.forEach(dep => {
                 args.push(dep);
             });
             filesToValidate.forEach((file) => {
                  args.push(file);
             });
 
-
-            let output = this.processController.execShellCommand_old('java -jar',args, "Hapi");
-            console.log(output);
+            let output = await this.processController.execShellCommandOld('java -jar',args, "Hapi");
+            this.debugHandler.log("info","received output");
             resolve(output);
         });
     }

@@ -1,54 +1,56 @@
+import { DebugHandler } from "./debugHandler";
 import { Dependency } from "../models/dependency";
 import * as vscode from 'vscode';
 import { join } from 'path';
 import yaml = require('js-yaml');
 import fs = require('fs');
-import { ConfigHandler } from "./configHandler";
+import { PathController } from "./pathController";
+import { PathValues } from "../models/pathValues";
 
 export class DependencyController{
 
-    sushiConfigPath: string;
-    ressourcePath: string;
+    pathController: PathController;
+    debugHandler : DebugHandler;
 
-    constructor(configHandler: ConfigHandler){
-        this.sushiConfigPath = configHandler.getFilePathFromConfig("HapiValidator.sushi-config.path");
-        this.ressourcePath = configHandler.getFilePathFromConfig("RessourcesFolder");
+
+    constructor(debugHandler : DebugHandler, pathController: PathController){
+        this.debugHandler = debugHandler;
+        this.pathController = pathController;
     }
 
-    public getDependenciesAsIgList() : string[] {
+    public async getDependenciesAsIgList(pathValues: PathValues) : Promise<string[]> {
         let result: string[] = [];
-
-        let dependencies = this.parseDependencies();
+        let dependencies = this.parseDependencies(pathValues.sushiConfigPath);
         dependencies.forEach((dependency) => {
             result.push(`-ig ${dependency.name}#${dependency.version}`);
         });
-
-        let generatedFolderPath = this.getGeneratedFolderPath();
+        let generatedFolderPath = this.getGeneratedFolderPath(pathValues.ressourceFolderPath);
         result.push(`-ig ${generatedFolderPath}`);
+        
         return result;
     }
 
-    public parseDependencies() : Dependency[] {
-        let config = this.parseConfig();
-        let dependencies = [];
-        if(config?.dependencies) {
-            for (var file in config.dependencies) {
-                dependencies.push(new Dependency(file,config.dependencies[file]));
+    private parseDependencies(sushiConfigPath: string) : Dependency[] {
+            let config = this.parseConfig(sushiConfigPath);
+            let dependencies = [];
+            if(config?.dependencies) {
+                for (var file in config.dependencies) {
+                    dependencies.push(new Dependency(file,config.dependencies[file]));
+                }
             }
-        }
-        else
-        {
-            vscode.window.showInformationMessage('Warning: No dependencies found in ' + this.sushiConfigPath);
-        }
-        return dependencies;
+            else
+            {
+                vscode.window.showInformationMessage('Warning: No dependencies found in ' + sushiConfigPath);
+            }
+            return dependencies;
     }
 
-    private getGeneratedFolderPath() {
-        return join(this.ressourcePath, 'fsh-generated','resources');
+    private getGeneratedFolderPath(ressourceFolderPath: string) {
+        return join(ressourceFolderPath, 'fsh-generated','resources');
     }
 
-    private parseConfig() : any{
-        const doc = yaml.load(fs.readFileSync(this.sushiConfigPath, 'utf8'));
+    private parseConfig(sushiConfigPath: string) : any{
+        const doc = yaml.load(fs.readFileSync(sushiConfigPath, 'utf8'));
         return doc;
     }
 }

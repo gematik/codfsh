@@ -1,7 +1,14 @@
 import { DiagnosticSeverity, Range } from "vscode";
 import { Diagnostic } from "../../models/diagnostic";
+import { DebugHandler } from "../debugHandler";
 
 export class SushiOutputParser{
+
+    debugHandler : DebugHandler;
+
+    constructor(debugHandler : DebugHandler){
+        this.debugHandler = debugHandler;
+    }
 
     public getDiagnostics(logOutput: string){
         const regex = /(?<severity>\w+)\s(?<message>.*)\n\s+File:\s(?<file>.*)\n\s+Line:\s(?<line_from>\d+)(\s-\s(?<line_to>\d+))?/gm;
