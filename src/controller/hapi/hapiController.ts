@@ -58,38 +58,16 @@ export class HapiController{
         this.notificationController.notifyStarted(filesForValidation);
         const dependencyList = await this.dependencyController.getDependenciesAsIgList(pathValues);
         const consoleOutput = await this.hapiWrapper.getConsoleOutput(filesForValidation, dependencyList);
-        this.processValidationResults(consoleOutput);
-       
+        this.processValidationResults(consoleOutput, filesForValidation.length);
+
     }
 
-    private validateThen(filesForValidation: string[]) {
-        this.notificationController.notifyStarted(filesForValidation);
-        this.pathController.getPathVariables()
-        .then((pathValues: PathValues) => {
-            this.dependencyController.getDependenciesAsIgList(pathValues)
-            .then((dependencylist : string[]) => {
-                this.hapiWrapper.getConsoleOutput(filesForValidation, dependencylist)
-                .then((consoleOutput: string) => {
-                    this.processValidationResults(consoleOutput);
-                });
-            });
-        }).catch((error) => {
-            this.debugHandler.log("error", error, true);
-        });
-    }
-
-    private processValidationResults(consoleOutput: string) {
-        var validationResults = this.hapiOutputParser.getValidationResults(consoleOutput);
+    private processValidationResults(consoleOutput: string, numberOfFiles: number) {
+        var validationResults = this.hapiOutputParser.getValidationResults(consoleOutput, numberOfFiles);
         this.diagnosticController.clearDiagnosticCollection();
         validationResults.forEach((result : ValidationResult) => {
             this.diagnosticController.addDiagnostics(result.diagnostics);
             this.notificationController.notifyCompleted(result.file + " " + result.summary);
         });
-
     }
 }
-
-
-
-
-

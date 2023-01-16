@@ -14,12 +14,10 @@ export function activate(context: vscode.ExtensionContext) {
 		let hapiController = new HapiController(debugHandler, diagnosticCollection);
 
 		let runSushiSubscription = vscode.commands.registerCommand('codfsh.runSushi', () => {
-			debugHandler.log("info","Executing Sushi");
 			sushiController.execute();
 		});
 
 		let runHapiSubscription = vscode.commands.registerCommand('codfsh.runHapi', () => {
-			debugHandler.log("info","Executing Hapi");
 			hapiController.execute();
 		});
 
@@ -39,7 +37,7 @@ export function activate(context: vscode.ExtensionContext) {
 			debugHandler.log("error",e.message);
 			vscode.window.showErrorMessage(e.message);
 		}
-		
+
 	}
 }
 

@@ -29,20 +29,20 @@ class SushiController {
     async execute() {
         try {
             this.debugHandler.log("info", "Running Sushi...", true);
-            const consoleOutput = await this.getConsoleOuput();
+            const consoleOutput = await this.getConsoleOutput();
             var diagnostics = this.sushiOutputParser.getDiagnostics(consoleOutput);
-            this.addDiagnistics(diagnostics);
+            this.addDiagnostics(diagnostics);
             this.debugHandler.log("info", "Sushi completed.", true);
         }
         catch (error) {
             this.debugHandler.log("error", error, true);
         }
     }
-    addDiagnistics(diagnostics) {
+    addDiagnostics(diagnostics) {
         this.diagnosticController.clearDiagnosticCollection();
         this.diagnosticController.addDiagnostics(diagnostics);
     }
-    async getConsoleOuput() {
+    async getConsoleOutput() {
         const pathValues = await this.pathController.getPathVariables();
         const consoleOutput = await this.sushiWrapper.getConsoleOutput(pathValues.ressourceFolderPath);
         return consoleOutput;
@@ -71,7 +71,7 @@ class SushiWrapper {
                 let args = [];
                 args.push(ressourceFolderPath);
                 args.push('-s');
-                let output = await this.processController.execShellCommandSync("sushi", args, "Sushi");
+                let output = await this.processController.execShellCommandAsync("sushi", args, "Sushi");
                 resolve(output);
             }
             catch (e) {
@@ -97,45 +97,56 @@ class ProcessController {
         this.debugHandler = debugHandler;
     }
     execShellCommandAsync(cmd, arg, outputChannel) {
-        let output = vscode.window.createOutputChannel(outputChannel);
-        output.clear();
-        let logCommand = cmd + ' ' + arg.join(' ');
-        output.show();
-        let stringoutput = "";
         return new Promise((resolve, reject) => {
-            console.log(logCommand);
-            this.debugHandler.log("info", "Executing: '" + logCommand + "'");
-            output.appendLine(logCommand);
-            const run = (0, node_child_process_1.spawn)(cmd, arg);
-            run.stdout.on('data', (data) => {
-                output.appendLine(data);
-                console.log(data);
-                stringoutput += data;
-            });
-            run.stderr.on('data', (data) => {
-                output.appendLine(data);
-                console.log(data);
-                stringoutput += data;
-            });
-            run.on('close', function (code) {
-                output.appendLine(`child process exited with code ${code}`);
-                resolve(stringoutput);
-            });
+            try {
+                let logCommand = cmd + ' ' + arg.join(' ');
+                let output = this.prepareOutput(outputChannel);
+                let stringoutput = "";
+                this.debugHandler.log("info", "Executing: '" + logCommand + "'");
+                output.appendLine(logCommand);
+                const run = (0, node_child_process_1.spawn)(cmd, arg);
+                run.stdout.on('data', (data) => {
+                    output.appendLine(data);
+                    this.debugHandler.log("info", data);
+                    stringoutput += data;
+                });
+                run.stderr.on('data', (data) => {
+                    output.appendLine(data);
+                    this.debugHandler.log("info", data);
+                    stringoutput += data;
+                });
+                run.on('close', function (code) {
+                    output.appendLine(`child process exited with code ${code}`);
+                    resolve(stringoutput);
+                });
+            }
+            catch (e) {
+                reject(e);
+                this.debugHandler.log("error", e);
+            }
         });
     }
-    execShellCommandSync(cmdOnly, arg, outputChannel) {
-        const exec = (__webpack_require__(6).exec);
-        const cmd = cmdOnly + ' ' + arg.join(' ');
-        console.log(cmd);
+    prepareOutput(outputChannel) {
         let output = vscode.window.createOutputChannel(outputChannel);
         output.clear();
-        output.appendLine(cmd);
+        output.show();
+        return output;
+    }
+    execShellCommandOld(cmdOnly, arg, outputChannel) {
+        const exec = (__webpack_require__(6).exec);
+        const logCommand = cmdOnly + ' ' + arg.join(' ');
+        this.debugHandler.log("info", "Executing: '" + logCommand + "'");
+        let output = vscode.window.createOutputChannel(outputChannel);
+        output.clear();
+        output.appendLine(logCommand);
         output.show();
         return new Promise((resolve, reject) => {
-            exec(cmd, (error, stdout, stderr) => {
+            exec(logCommand, (error, stdout, stderr) => {
                 if (error) {
-                    // console.log(error);
-                    //reject(new Error(error));
+                    this.debugHandler.log("error", error);
+                }
+                if (stderr) {
+                    this.debugHandler.log("error", stderr);
                 }
                 output.append(stdout);
                 resolve(stdout);
@@ -421,7 +432,7 @@ const errorHandler_1 = __webpack_require__(23);
 const notificationController_1 = __webpack_require__(24);
 const pathController_1 = __webpack_require__(11);
 const dependencyController_1 = __webpack_require__(25);
-const url = __webpack_require__(53);
+const url = __webpack_require__(52);
 class HapiController {
     constructor(debugHandler, diagnosticCollection) {
         this.debugHandler = debugHandler;
@@ -454,25 +465,10 @@ class HapiController {
         this.notificationController.notifyStarted(filesForValidation);
         const dependencyList = await this.dependencyController.getDependenciesAsIgList(pathValues);
         const consoleOutput = await this.hapiWrapper.getConsoleOutput(filesForValidation, dependencyList);
-        this.processValidationResults(consoleOutput);
+        this.processValidationResults(consoleOutput, filesForValidation.length);
     }
-    validateThen(filesForValidation) {
-        this.notificationController.notifyStarted(filesForValidation);
-        this.pathController.getPathVariables()
-            .then((pathValues) => {
-            this.dependencyController.getDependenciesAsIgList(pathValues)
-                .then((dependencylist) => {
-                this.hapiWrapper.getConsoleOutput(filesForValidation, dependencylist)
-                    .then((consoleOutput) => {
-                    this.processValidationResults(consoleOutput);
-                });
-            });
-        }).catch((error) => {
-            this.debugHandler.log("error", error, true);
-        });
-    }
-    processValidationResults(consoleOutput) {
-        var validationResults = this.hapiOutputParser.getValidationResults(consoleOutput);
+    processValidationResults(consoleOutput, numberOfFiles) {
+        var validationResults = this.hapiOutputParser.getValidationResults(consoleOutput, numberOfFiles);
         this.diagnosticController.clearDiagnosticCollection();
         validationResults.forEach((result) => {
             this.diagnosticController.addDiagnostics(result.diagnostics);
@@ -504,6 +500,10 @@ class HapiWrapper {
             let args = [];
             args.push(this.validatorDestination);
             args.push(`-version 4.0.1`);
+            args.push(`-jurisdiction DE`);
+            args.push(`-locale de-DE`);
+            args.push(`-tx n/a`);
+            args.push(`-debug`);
             args.push(this.formatProxySettings());
             dependencies.forEach(dep => {
                 args.push(dep);
@@ -511,8 +511,8 @@ class HapiWrapper {
             filesToValidate.forEach((file) => {
                 args.push(file);
             });
-            let output = this.processController.execShellCommandSync('java -jar', args, "Hapi");
-            console.log(output);
+            let output = await this.processController.execShellCommandOld('java -jar', args, "Hapi");
+            this.debugHandler.log("info", "received output");
             resolve(output);
         });
     }
@@ -544,19 +544,32 @@ class HapiOutputParser {
     constructor(debugHandler) {
         this.debugHandler = debugHandler;
     }
-    getValidationResults(logOutput) {
-        const files = this.getFilesValidated(logOutput);
+    getValidationResults(logOutput, numberOfFiles) {
+        const files = this.getFilesValidated(logOutput, numberOfFiles);
         let validationResults = [];
         files.forEach(validationResult => {
             let diagnostics = this.parseFileDetails(validationResult.text, validationResult.file);
             validationResult.setDiagnostics(diagnostics);
-            console.log("Found " + validationResult.diagnostics.length + " Diagnostics in File " + validationResult.file);
+            this.logFileDetails(validationResult);
             validationResults.push(validationResult);
         });
+        this.debugHandler.log("info", "Added diagnostics for " + validationResults.length + " file(s).");
         return validationResults;
     }
-    getFilesValidated(logOutput) {
-        const regex = /-- (?<filename>.*) -+\n(?<summary>.*)\n(?<text>(.+\n)*)-{10,}/gm;
+    logFileDetails(validationResult) {
+        let errors = this.getCountForSeverity(validationResult, vscode_1.DiagnosticSeverity.Error);
+        let warnings = this.getCountForSeverity(validationResult, vscode_1.DiagnosticSeverity.Warning);
+        let notes = this.getCountForSeverity(validationResult, vscode_1.DiagnosticSeverity.Information);
+        this.debugHandler.log("info", `Found ${validationResult.diagnostics.length} (${errors}|${warnings}|${notes}) diagnostics in file ${validationResult.file}`);
+    }
+    getCountForSeverity(validationResult, searchSeverity) {
+        return validationResult.diagnostics.filter(d => d.severity === searchSeverity).length;
+    }
+    getFilesValidated(logOutput, numberOfFiles) {
+        let regex = /(\n\s\sValidate\s(?<filename>.*)\n)(.|\n)*\*(?<summary>\w+\*\:.*)\n(?<text>(.|\n)+)/gm;
+        if (numberOfFiles > 1) {
+            regex = /-- (?<filename>.*) -+\n(?<summary>.*)\n\s+(?<text>((.|\n))+?)-{2,}/gm;
+        }
         let m;
         let files = [];
         while ((m = regex.exec(logOutput)) !== null) {
@@ -570,27 +583,43 @@ class HapiOutputParser {
         return files;
     }
     parseFileDetails(logOutput, fileValidated) {
-        const regex = /(\s\s((?<severity>\w+)\s@\s(?<path>.*)\s(\(line\s(?<line_from>\d+).\scol(?<col_from>\d+)\))?:\s(?<message>.*))\n)/gm;
+        const regex = /((?<severity>\w+)\s@\s(?<path>.+?)(\s\(line\s(?<line_from>\d+).\scol(?<col_from>\d+)\))?:\s(?<message>.*))/gm;
         let m;
         let output = [];
         while ((m = regex.exec(logOutput)) !== null) {
             if (m.index === regex.lastIndex) {
                 regex.lastIndex++;
             }
-            var severityType = vscode_1.DiagnosticSeverity.Error;
-            if (m.groups?.severity === "warn") {
-                severityType = vscode_1.DiagnosticSeverity.Warning;
-            }
             if (m.groups?.message) {
-                var lineFrom = +(m.groups?.line_from) - 1;
-                var colFrom = 0;
-                if (m.groups?.col_from) {
-                    colFrom = +(m.groups?.col_from) - 1;
-                }
-                output.push(new diagnostic_1.Diagnostic(severityType, m.groups?.path + " | " + m.groups?.message, fileValidated, new vscode_1.Range(lineFrom, colFrom, lineFrom, 200)));
+                let severity = this.setSeverity(m);
+                let range = this.setRange(m);
+                output.push(new diagnostic_1.Diagnostic(severity, m.groups?.path + " | " + m.groups?.message, fileValidated, range));
             }
         }
         return output;
+    }
+    setRange(m) {
+        var lineFrom = 0;
+        var colFrom = 0;
+        if (m.groups?.col_from) {
+            lineFrom = +(m.groups?.line_from) - 1;
+        }
+        if (m.groups?.col_from) {
+            colFrom = +(m.groups?.col_from) - 1;
+        }
+        return new vscode_1.Range(lineFrom, colFrom, lineFrom, 200);
+    }
+    setSeverity(m) {
+        let severityType = vscode_1.DiagnosticSeverity.Error;
+        if (m.groups?.severity) {
+            if (["warn", "Warning"].includes(m.groups.severity)) {
+                severityType = vscode_1.DiagnosticSeverity.Warning;
+            }
+            else if (["Information"].includes(m.groups.severity)) {
+                severityType = vscode_1.DiagnosticSeverity.Information;
+            }
+        }
+        return severityType;
     }
 }
 exports.HapiOutputParser = HapiOutputParser;
@@ -4950,6 +4979,12 @@ module.exports.dump = dump;
 
 /***/ }),
 /* 52 */
+/***/ ((module) => {
+
+module.exports = require("url");
+
+/***/ }),
+/* 53 */
 /***/ ((__unused_webpack_module, exports, __webpack_require__) => {
 
 
@@ -4980,12 +5015,6 @@ class DebugHandler {
 }
 exports.DebugHandler = DebugHandler;
 
-
-/***/ }),
-/* 53 */
-/***/ ((module) => {
-
-module.exports = require("url");
 
 /***/ })
 /******/ 	]);
@@ -5025,7 +5054,7 @@ exports.deactivate = exports.activate = void 0;
 const vscode = __webpack_require__(1);
 const sushiController_1 = __webpack_require__(2);
 const hapiController_1 = __webpack_require__(15);
-const debugHandler_1 = __webpack_require__(52);
+const debugHandler_1 = __webpack_require__(53);
 function activate(context) {
     let debugHandler = new debugHandler_1.DebugHandler();
     debugHandler.log("info", "Extension started");
@@ -5034,11 +5063,9 @@ function activate(context) {
         let sushiController = new sushiController_1.SushiController(debugHandler, diagnosticCollection);
         let hapiController = new hapiController_1.HapiController(debugHandler, diagnosticCollection);
         let runSushiSubscription = vscode.commands.registerCommand('codfsh.runSushi', () => {
-            debugHandler.log("info", "Executing Sushi");
             sushiController.execute();
         });
         let runHapiSubscription = vscode.commands.registerCommand('codfsh.runHapi', () => {
-            debugHandler.log("info", "Executing Hapi");
             hapiController.execute();
         });
         let runFhirFshSubscription = vscode.commands.registerCommand('codfsh.runFhirFsh', () => {

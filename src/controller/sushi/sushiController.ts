@@ -26,9 +26,9 @@ export class SushiController{
     public async execute() {
         try {
             this.debugHandler.log("info", "Running Sushi...", true);
-            const consoleOutput = await this.getConsoleOuput();
+            const consoleOutput = await this.getConsoleOutput();
             var diagnostics = this.sushiOutputParser.getDiagnostics(consoleOutput);
-            this.addDiagnistics(diagnostics);
+            this.addDiagnostics(diagnostics);
             this.debugHandler.log("info", "Sushi completed.", true);
 
         } catch (error: any)  {
@@ -36,19 +36,14 @@ export class SushiController{
         }
     }
 
-    private addDiagnistics(diagnostics: Diagnostic[]) {
+    private addDiagnostics(diagnostics: Diagnostic[]) {
         this.diagnosticController.clearDiagnosticCollection();
         this.diagnosticController.addDiagnostics(diagnostics);
     }
 
-    private async getConsoleOuput() {
+    private async getConsoleOutput() {
         const pathValues = await this.pathController.getPathVariables();
         const consoleOutput = await this.sushiWrapper.getConsoleOutput(pathValues.ressourceFolderPath);
         return consoleOutput;
     }
 }
-
-
-
-
-

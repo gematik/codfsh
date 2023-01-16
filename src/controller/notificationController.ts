@@ -9,9 +9,9 @@ export class NotificationController {
     constructor(debugHandler : DebugHandler){
         this.debugHandler = debugHandler;
     }
-   
 
-    notifyStarted(filesForValidation: string[]) {
+
+    public notifyStarted(filesForValidation: string[]) {
         filesForValidation.forEach(file => {
             vscode.window.showInformationMessage("Running Hapi for '" + path.basename(file) + "'...");
         });

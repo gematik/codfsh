@@ -11,21 +11,39 @@ export class HapiOutputParser{
         this.debugHandler = debugHandler;
     }
 
-    public getValidationResults(logOutput: string): ValidationResult[]{
-        const files = this.getFilesValidated(logOutput);
+    public getValidationResults(logOutput: string, numberOfFiles: number): ValidationResult[]{
+        const files = this.getFilesValidated(logOutput, numberOfFiles);
 
         let validationResults : ValidationResult[] = [];
         files.forEach(validationResult => {
             let diagnostics = this.parseFileDetails(validationResult.text, validationResult.file);
             validationResult.setDiagnostics(diagnostics);
-            console.log("Found " + validationResult.diagnostics.length + " Diagnostics in File " + validationResult.file);
+            this.logFileDetails(validationResult);
             validationResults.push(validationResult);
         });
+        this.debugHandler.log("info", "Added diagnostics for " + validationResults.length + " file(s).");
         return validationResults;
     }
 
-    getFilesValidated(logOutput: string) : ValidationResult[]{
-        const regex = /-- (?<filename>.*) -+\n(?<summary>.*)\n(?<text>(.+\n)*)-{10,}/gm;
+    private logFileDetails(validationResult: ValidationResult) {
+
+        let errors = this.getCountForSeverity(validationResult, DiagnosticSeverity.Error);
+        let warnings = this.getCountForSeverity(validationResult, DiagnosticSeverity.Warning);
+        let notes = this.getCountForSeverity(validationResult, DiagnosticSeverity.Information);
+        this.debugHandler.log("info", `Found ${validationResult.diagnostics.length} (${errors}|${warnings}|${notes}) diagnostics in file ${validationResult.file}`);
+    }
+
+    private getCountForSeverity(validationResult: ValidationResult, searchSeverity: DiagnosticSeverity) {
+        return validationResult.diagnostics.filter(d => d.severity === searchSeverity).length;
+    }
+
+    getFilesValidated(logOutput: string, numberOfFiles: number) : ValidationResult[]{
+        let regex= /(\n\s\sValidate\s(?<filename>.*)\n)(.|\n)*\*(?<summary>\w+\*\:.*)\n(?<text>(.|\n)+)/gm;
+
+        if (numberOfFiles>1){
+            regex = /-- (?<filename>.*) -+\n(?<summary>.*)\n\s+(?<text>((.|\n))+?)-{2,}/gm;
+        }
+
         let m;
         let files : ValidationResult[] = [];
         while ((m = regex.exec(logOutput)) !== null) {
@@ -41,7 +59,7 @@ export class HapiOutputParser{
     }
 
     private parseFileDetails(logOutput: string, fileValidated: string): Diagnostic[] {
-        const regex = /(\s\s((?<severity>\w+)\s@\s(?<path>.*)\s(\(line\s(?<line_from>\d+).\scol(?<col_from>\d+)\))?:\s(?<message>.*))\n)/gm;
+        const regex = /((?<severity>\w+)\s@\s(?<path>.+?)(\s\(line\s(?<line_from>\d+).\scol(?<col_from>\d+)\))?:\s(?<message>.*))/gm;
         let m;
         let output : Diagnostic[] = [];
 
@@ -50,20 +68,38 @@ export class HapiOutputParser{
                 regex.lastIndex++;
             }
 
-            var severityType = DiagnosticSeverity.Error;
-            if (m.groups?.severity === "warn") {
-                severityType = DiagnosticSeverity.Warning;
-            }
-
             if (m.groups?.message) {
-                var lineFrom: number = +(m.groups?.line_from) - 1;
-                var colFrom: number = 0;
-                if (m.groups?.col_from) {
-                    colFrom = +(m.groups?.col_from) - 1;
-                }
-                output.push(new Diagnostic(severityType, m.groups?.path + " | " + m.groups?.message, fileValidated, new Range(lineFrom, colFrom, lineFrom, 200)));
+                let severity = this.setSeverity(m);
+                let range = this.setRange(m);
+                output.push(new Diagnostic(severity, m.groups?.path + " | " + m.groups?.message, fileValidated,range ));
             }
         }
         return output;
+    }
+
+    private setRange(m: RegExpExecArray) : Range {
+        var lineFrom: number = 0;
+        var colFrom: number = 0;
+        if (m.groups?.col_from) {
+            lineFrom = +(m.groups?.line_from) - 1;
+        }
+        if (m.groups?.col_from) {
+            colFrom = +(m.groups?.col_from) - 1;
+        }
+
+        return new Range(lineFrom, colFrom, lineFrom, 200);
+    }
+
+    private setSeverity(m: RegExpExecArray) {
+        let severityType = DiagnosticSeverity.Error;
+        if(m.groups?.severity) {
+            if (["warn", "Warning"].includes(m.groups.severity)) {
+                severityType = DiagnosticSeverity.Warning;
+            }
+            else if (["Information"].includes(m.groups.severity)) {
+                severityType = DiagnosticSeverity.Information;
+            }
+        }
+        return severityType;
     }
 }

@@ -1,10 +1,7 @@
 import { ProcessController } from "../processController";
 import { ProxySettings } from "../../models/proxySettings";
 import { ConfigHandler } from "../configHandler";
-import { DependencyController } from "../dependencyController";
-import { PathController } from "../pathController";
 import { DebugHandler } from "../debugHandler";
-import { Dependency } from "../../models/dependency";
 
 
 export class HapiWrapper{
@@ -28,6 +25,10 @@ export class HapiWrapper{
             let args = [];
             args.push(this.validatorDestination);
             args.push(`-version 4.0.1`);
+            args.push(`-jurisdiction DE`);
+            args.push(`-locale de-DE`);
+            args.push(`-tx n/a`);
+            args.push(`-debug`);
             args.push(this.formatProxySettings());
             dependencies.forEach(dep => {
                 args.push(dep);
@@ -36,9 +37,8 @@ export class HapiWrapper{
                  args.push(file);
             });
 
-
-            let output = this.processController.execShellCommandSync('java -jar',args, "Hapi");
-            console.log(output);
+            let output = await this.processController.execShellCommandOld('java -jar',args, "Hapi");
+            this.debugHandler.log("info","received output");
             resolve(output);
         });
     }

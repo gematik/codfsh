@@ -21,8 +21,8 @@ export class SushiWrapper {
                     let args : string[] = [];
                     args.push(ressourceFolderPath);
                     args.push('-s');
-                    let output = await this.processController.execShellCommandSync("sushi", args, "Sushi");
-                    resolve(output);   
+                    let output = await this.processController.execShellCommandAsync("sushi", args, "Sushi");
+                    resolve(output);
                 }
                 catch(e){
                     reject(e);
