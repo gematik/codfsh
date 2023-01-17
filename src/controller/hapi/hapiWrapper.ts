@@ -8,22 +8,21 @@ export class HapiWrapper{
 
     debugHandler : DebugHandler;
     processController : ProcessController;
-
-    validatorDestination : string;
-    proxyConfig: ProxySettings;
+    configHandler: ConfigHandler;
 
     constructor(debugHandler : DebugHandler, configHandler: ConfigHandler){
         this.debugHandler = debugHandler;
         this.processController = new ProcessController(this.debugHandler);
-        this.validatorDestination = configHandler.getFilePathFromConfig("HapiValidator.Executable");
-        this.proxyConfig =  configHandler.getProxySettings("HapiValidator.Proxy");
-    }
+        this.configHandler = configHandler;
+  }
 
     public async getConsoleOutput(filesToValidate: string[], dependencies: string[])  : Promise<string>  {
         //TODO: Check validator available, if not ask to download?!
         return new Promise(async (resolve, reject) => {
+            const validatorDestination = this.configHandler.getFilePathFromConfig("HapiValidator.Executable");
+
             let args = [];
-            args.push(this.validatorDestination);
+            args.push(validatorDestination);
             args.push(`-version 4.0.1`);
             args.push(`-jurisdiction DE`);
             args.push(`-locale de-DE`);
@@ -49,8 +48,9 @@ export class HapiWrapper{
     }
 
     private formatProxySettings() : string {
-        if (this.proxyConfig.active) {
-            return `-proxy ${this.proxyConfig.address}`;
+        const proxyConfig =  this.configHandler.getProxySettings("HapiValidator.Proxy");
+        if (proxyConfig.active) {
+            return `-proxy ${proxyConfig.address}`;
         }
         return "";
     }

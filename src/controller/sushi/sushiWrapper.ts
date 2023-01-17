@@ -1,26 +1,30 @@
-import { PathValues } from "../../models/pathValues";
 import { DebugHandler } from "../debugHandler";
 import { PathController } from "../pathController";
 import { ProcessController } from "../processController";
-import { join } from 'path';
+import { ConfigHandler } from "../configHandler";
+import { SushiSettings } from "../../models/sushiSettings";
+
 export class SushiWrapper {
 
     processController : ProcessController;
     debugHandler : DebugHandler;
     pathController : PathController;
+    configHandler: ConfigHandler;
 
-    constructor(debugHandler : DebugHandler, pathController : PathController){
+    constructor(debugHandler : DebugHandler, pathController : PathController, configHandler: ConfigHandler ){
         this.debugHandler = debugHandler;
         this.pathController = pathController;
         this.processController = new ProcessController(this.debugHandler);
+        this.configHandler = configHandler;
     }
 
     public async getConsoleOutput(ressourceFolderPath : string) : Promise<string>  {
         return new Promise(async (resolve, reject) => {
+            let sushiSettings = this.configHandler.getSushiSettings("Sushi.Settings");
             try{
                     let args : string[] = [];
                     args.push(ressourceFolderPath);
-                    args.push('-s');
+                    this.handleSushieSettings(sushiSettings, args);
                     let output = await this.processController.execShellCommandAsync("sushi", args, "Sushi");
                     resolve(output);
                 }
@@ -28,5 +32,12 @@ export class SushiWrapper {
                     reject(e);
                 }
         });
+    }
+
+    private handleSushieSettings(sushiSettings: SushiSettings, args: string[]) {
+        if (sushiSettings.generateSnapshots) {
+            this.debugHandler.log("info","Snapshot generation is active!");
+            args.push('-s');
+        }
     }
 }

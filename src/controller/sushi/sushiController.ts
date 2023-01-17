@@ -7,10 +7,12 @@ import { DebugHandler } from '../debugHandler';
 import { PathController } from '../pathController';
 import { PathValues } from '../../models/pathValues';
 import { Diagnostic } from '../../models/diagnostic';
+import { ConfigHandler } from '../configHandler';
 
 export class SushiController{
     debugHandler : DebugHandler;
     sushiWrapper : SushiWrapper;
+    configHandler: ConfigHandler;
     diagnosticController : DiagnosticController;
     sushiOutputParser : SushiOutputParser;
     pathController: PathController;
@@ -18,7 +20,8 @@ export class SushiController{
     constructor(debugHandler : DebugHandler, diagnosticCollection: vscode.DiagnosticCollection){
         this.debugHandler = debugHandler;
         this.pathController = new PathController(this.debugHandler);
-        this.sushiWrapper = new SushiWrapper(this.debugHandler, this.pathController);
+        this.configHandler = new ConfigHandler(this.debugHandler);
+        this.sushiWrapper = new SushiWrapper(this.debugHandler, this.pathController, this.configHandler);
         this.diagnosticController = new DiagnosticController(this.debugHandler, diagnosticCollection);
         this.sushiOutputParser = new SushiOutputParser(this.debugHandler);
     }

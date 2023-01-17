@@ -2,7 +2,7 @@
   "name": "codfsh",
   "displayName": "codfsh",
   "description": "Tool for integration of sushi interpreter/compiler and hapi validator ",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "repository": {
 		"type": "git",
 		"url": "https://github.com/HendrikGematik/codfsh"
@@ -40,6 +40,12 @@
           "default": "192.168.110.10:3128",
           "scope": "resource",
           "description": "Proxy address"
+        },
+        "codfsh.Sushi.Settings.BuildSnapshots": {
+          "type": "boolean",
+          "default": false,
+          "scope": "resource",
+          "description": "Generate Snapshots"
         }
       }
     },

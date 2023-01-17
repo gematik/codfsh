@@ -18,11 +18,13 @@ const sushiWrapper_1 = __webpack_require__(3);
 const diagnosticController_1 = __webpack_require__(7);
 const sushiOutputParser_1 = __webpack_require__(9);
 const pathController_1 = __webpack_require__(11);
+const configHandler_1 = __webpack_require__(15);
 class SushiController {
     constructor(debugHandler, diagnosticCollection) {
         this.debugHandler = debugHandler;
         this.pathController = new pathController_1.PathController(this.debugHandler);
-        this.sushiWrapper = new sushiWrapper_1.SushiWrapper(this.debugHandler, this.pathController);
+        this.configHandler = new configHandler_1.ConfigHandler(this.debugHandler);
+        this.sushiWrapper = new sushiWrapper_1.SushiWrapper(this.debugHandler, this.pathController, this.configHandler);
         this.diagnosticController = new diagnosticController_1.DiagnosticController(this.debugHandler, diagnosticCollection);
         this.sushiOutputParser = new sushiOutputParser_1.SushiOutputParser(this.debugHandler);
     }
@@ -60,17 +62,19 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.SushiWrapper = void 0;
 const processController_1 = __webpack_require__(4);
 class SushiWrapper {
-    constructor(debugHandler, pathController) {
+    constructor(debugHandler, pathController, configHandler) {
         this.debugHandler = debugHandler;
         this.pathController = pathController;
         this.processController = new processController_1.ProcessController(this.debugHandler);
+        this.configHandler = configHandler;
     }
     async getConsoleOutput(ressourceFolderPath) {
         return new Promise(async (resolve, reject) => {
+            let sushiSettings = this.configHandler.getSushiSettings("Sushi.Settings");
             try {
                 let args = [];
                 args.push(ressourceFolderPath);
-                args.push('-s');
+                this.handleSushieSettings(sushiSettings, args);
                 let output = await this.processController.execShellCommandAsync("sushi", args, "Sushi");
                 resolve(output);
             }
@@ -78,6 +82,12 @@ class SushiWrapper {
                 reject(e);
             }
         });
+    }
+    handleSushieSettings(sushiSettings, args) {
+        if (sushiSettings.generateSnapshots) {
+            this.debugHandler.log("info", "Snapshot generation is active!");
+            args.push('-s');
+        }
     }
 }
 exports.SushiWrapper = SushiWrapper;
@@ -421,18 +431,109 @@ module.exports = require("fs");
 
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.ConfigHandler = void 0;
+const vscode = __webpack_require__(1);
+const fs = __webpack_require__(14);
+const proxySettings_1 = __webpack_require__(16);
+const sushiSettings_1 = __webpack_require__(17);
+class ConfigHandler {
+    constructor(debugHandler) {
+        this.debugHandler = debugHandler;
+    }
+    getActualConfiguration() {
+        return vscode.workspace.getConfiguration('codfsh');
+    }
+    getFilePathFromConfig(section) {
+        let config = this.getActualConfiguration();
+        let path = config.get(section);
+        return this.check(path, section);
+    }
+    getSushiSettings(section) {
+        let config = this.getActualConfiguration();
+        let buildSnapshots = config.get(section + '.BuildSnapshots');
+        buildSnapshots = this.isBoolSectionDefined(buildSnapshots, section + '.BuildSnapshots');
+        return new sushiSettings_1.SushiSettings(buildSnapshots);
+    }
+    getProxySettings(section) {
+        let config = this.getActualConfiguration();
+        let active = config.get(section + '.enabled');
+        let address = config.get(section + '.ipAddress');
+        active = this.isBoolSectionDefined(active, section + '.enabled');
+        address = this.isStringSectionDefined(address, section + '.ipAddress');
+        return new proxySettings_1.ProxySettings(active, address);
+    }
+    check(path, section) {
+        path = this.isStringSectionDefined(path, section);
+        if (!fs.existsSync(path)) {
+            throw new Error("Specified " + section + " defined in the settings is incorrect.");
+        }
+        return path;
+    }
+    isStringSectionDefined(result, section) {
+        if (result === undefined) {
+            throw new Error(section + " is not defined in the settings of this extenion.");
+        }
+        return result;
+    }
+    isBoolSectionDefined(result, section) {
+        if (result === undefined) {
+            throw new Error(section + " is not defined in the settings of this extenion.");
+        }
+        return result;
+    }
+}
+exports.ConfigHandler = ConfigHandler;
+
+
+/***/ }),
+/* 16 */
+/***/ ((__unused_webpack_module, exports) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.ProxySettings = void 0;
+class ProxySettings {
+    constructor(active, address) {
+        this.active = active;
+        this.address = address;
+    }
+}
+exports.ProxySettings = ProxySettings;
+
+
+/***/ }),
+/* 17 */
+/***/ ((__unused_webpack_module, exports) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.SushiSettings = void 0;
+class SushiSettings {
+    constructor(generateSnapshots) {
+        this.generateSnapshots = generateSnapshots;
+    }
+}
+exports.SushiSettings = SushiSettings;
+
+
+/***/ }),
+/* 18 */
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.HapiController = void 0;
 const vscode = __webpack_require__(1);
 const diagnosticController_1 = __webpack_require__(7);
-const hapiWrapper_1 = __webpack_require__(16);
-const hapiOutputParser_1 = __webpack_require__(17);
-const configHandler_1 = __webpack_require__(19);
-const fileConnector_1 = __webpack_require__(21);
-const errorHandler_1 = __webpack_require__(23);
-const notificationController_1 = __webpack_require__(24);
+const hapiWrapper_1 = __webpack_require__(19);
+const hapiOutputParser_1 = __webpack_require__(20);
+const configHandler_1 = __webpack_require__(15);
+const fileConnector_1 = __webpack_require__(22);
+const errorHandler_1 = __webpack_require__(24);
+const notificationController_1 = __webpack_require__(25);
 const pathController_1 = __webpack_require__(11);
-const dependencyController_1 = __webpack_require__(25);
-const url = __webpack_require__(52);
+const dependencyController_1 = __webpack_require__(26);
+const url = __webpack_require__(53);
 class HapiController {
     constructor(debugHandler, diagnosticCollection) {
         this.debugHandler = debugHandler;
@@ -480,7 +581,7 @@ exports.HapiController = HapiController;
 
 
 /***/ }),
-/* 16 */
+/* 19 */
 /***/ ((__unused_webpack_module, exports, __webpack_require__) => {
 
 
@@ -491,14 +592,14 @@ class HapiWrapper {
     constructor(debugHandler, configHandler) {
         this.debugHandler = debugHandler;
         this.processController = new processController_1.ProcessController(this.debugHandler);
-        this.validatorDestination = configHandler.getFilePathFromConfig("HapiValidator.Executable");
-        this.proxyConfig = configHandler.getProxySettings("HapiValidator.Proxy");
+        this.configHandler = configHandler;
     }
     async getConsoleOutput(filesToValidate, dependencies) {
         //TODO: Check validator available, if not ask to download?!
         return new Promise(async (resolve, reject) => {
+            const validatorDestination = this.configHandler.getFilePathFromConfig("HapiValidator.Executable");
             let args = [];
-            args.push(this.validatorDestination);
+            args.push(validatorDestination);
             args.push(`-version 4.0.1`);
             args.push(`-jurisdiction DE`);
             args.push(`-locale de-DE`);
@@ -521,8 +622,9 @@ class HapiWrapper {
         //wget https://github.com/hapifhir/org.hl7.fhir.core/releases/download/5.6.89/validator_cli.jar -O ~\.fhir\validators\validator_cli_v5.6.89.jar
     }
     formatProxySettings() {
-        if (this.proxyConfig.active) {
-            return `-proxy ${this.proxyConfig.address}`;
+        const proxyConfig = this.configHandler.getProxySettings("HapiValidator.Proxy");
+        if (proxyConfig.active) {
+            return `-proxy ${proxyConfig.address}`;
         }
         return "";
     }
@@ -531,7 +633,7 @@ exports.HapiWrapper = HapiWrapper;
 
 
 /***/ }),
-/* 17 */
+/* 20 */
 /***/ ((__unused_webpack_module, exports, __webpack_require__) => {
 
 
@@ -539,7 +641,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.HapiOutputParser = void 0;
 const vscode_1 = __webpack_require__(1);
 const diagnostic_1 = __webpack_require__(10);
-const validationResult_1 = __webpack_require__(18);
+const validationResult_1 = __webpack_require__(21);
 class HapiOutputParser {
     constructor(debugHandler) {
         this.debugHandler = debugHandler;
@@ -626,7 +728,7 @@ exports.HapiOutputParser = HapiOutputParser;
 
 
 /***/ }),
-/* 18 */
+/* 21 */
 /***/ ((__unused_webpack_module, exports) => {
 
 
@@ -650,82 +752,13 @@ exports.ValidationResult = ValidationResult;
 
 
 /***/ }),
-/* 19 */
-/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.ConfigHandler = void 0;
-const vscode = __webpack_require__(1);
-const fs = __webpack_require__(14);
-const proxySettings_1 = __webpack_require__(20);
-class ConfigHandler {
-    constructor(debugHandler) {
-        this.debugHandler = debugHandler;
-    }
-    getActualConfiguration() {
-        return vscode.workspace.getConfiguration('codfsh');
-    }
-    getFilePathFromConfig(section) {
-        let config = this.getActualConfiguration();
-        let path = config.get(section);
-        return this.check(path, section);
-    }
-    getProxySettings(section) {
-        let config = this.getActualConfiguration();
-        let active = config.get(section + '.enabled');
-        let address = config.get(section + '.ipAddress');
-        active = this.isBoolSectionDefined(active, section + '.enabled');
-        address = this.isStringSectionDefined(address, section + '.ipAddress');
-        return new proxySettings_1.ProxySettings(active, address);
-    }
-    check(path, section) {
-        path = this.isStringSectionDefined(path, section);
-        if (!fs.existsSync(path)) {
-            throw new Error("Specified " + section + " defined in the settings is incorrect.");
-        }
-        return path;
-    }
-    isStringSectionDefined(result, section) {
-        if (result === undefined) {
-            throw new Error(section + " is not defined in the settings of this extenion.");
-        }
-        return result;
-    }
-    isBoolSectionDefined(result, section) {
-        if (result === undefined) {
-            throw new Error(section + " is not defined in the settings of this extenion.");
-        }
-        return result;
-    }
-}
-exports.ConfigHandler = ConfigHandler;
-
-
-/***/ }),
-/* 20 */
-/***/ ((__unused_webpack_module, exports) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.ProxySettings = void 0;
-class ProxySettings {
-    constructor(active, address) {
-        this.active = active;
-        this.address = address;
-    }
-}
-exports.ProxySettings = ProxySettings;
-
-
-/***/ }),
-/* 21 */
+/* 22 */
 /***/ ((__unused_webpack_module, exports, __webpack_require__) => {
 
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.FileConnector = void 0;
-const fshParser_1 = __webpack_require__(22);
+const fshParser_1 = __webpack_require__(23);
 const fs = __webpack_require__(14);
 const path_1 = __webpack_require__(12);
 class FileConnector {
@@ -774,7 +807,7 @@ exports.FileConnector = FileConnector;
 
 
 /***/ }),
-/* 22 */
+/* 23 */
 /***/ ((__unused_webpack_module, exports) => {
 
 
@@ -800,7 +833,7 @@ exports.FshParser = FshParser;
 
 
 /***/ }),
-/* 23 */
+/* 24 */
 /***/ ((__unused_webpack_module, exports, __webpack_require__) => {
 
 
@@ -822,7 +855,7 @@ exports.ErrorHandler = ErrorHandler;
 
 
 /***/ }),
-/* 24 */
+/* 25 */
 /***/ ((__unused_webpack_module, exports, __webpack_require__) => {
 
 
@@ -853,16 +886,16 @@ exports.NotificationController = NotificationController;
 
 
 /***/ }),
-/* 25 */
+/* 26 */
 /***/ ((__unused_webpack_module, exports, __webpack_require__) => {
 
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.DependencyController = void 0;
-const dependency_1 = __webpack_require__(26);
+const dependency_1 = __webpack_require__(27);
 const vscode = __webpack_require__(1);
 const path_1 = __webpack_require__(12);
-const yaml = __webpack_require__(27);
+const yaml = __webpack_require__(28);
 const fs = __webpack_require__(14);
 class DependencyController {
     constructor(debugHandler, pathController) {
@@ -904,7 +937,7 @@ exports.DependencyController = DependencyController;
 
 
 /***/ }),
-/* 26 */
+/* 27 */
 /***/ ((__unused_webpack_module, exports) => {
 
 
@@ -920,14 +953,14 @@ exports.Dependency = Dependency;
 
 
 /***/ }),
-/* 27 */
+/* 28 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 
 
 
-var loader = __webpack_require__(28);
-var dumper = __webpack_require__(51);
+var loader = __webpack_require__(29);
+var dumper = __webpack_require__(52);
 
 
 function renamed(from, to) {
@@ -938,32 +971,32 @@ function renamed(from, to) {
 }
 
 
-module.exports.Type = __webpack_require__(37);
-module.exports.Schema = __webpack_require__(36);
-module.exports.FAILSAFE_SCHEMA = __webpack_require__(35);
-module.exports.JSON_SCHEMA = __webpack_require__(34);
-module.exports.CORE_SCHEMA = __webpack_require__(33);
-module.exports.DEFAULT_SCHEMA = __webpack_require__(32);
+module.exports.Type = __webpack_require__(38);
+module.exports.Schema = __webpack_require__(37);
+module.exports.FAILSAFE_SCHEMA = __webpack_require__(36);
+module.exports.JSON_SCHEMA = __webpack_require__(35);
+module.exports.CORE_SCHEMA = __webpack_require__(34);
+module.exports.DEFAULT_SCHEMA = __webpack_require__(33);
 module.exports.load                = loader.load;
 module.exports.loadAll             = loader.loadAll;
 module.exports.dump                = dumper.dump;
-module.exports.YAMLException = __webpack_require__(30);
+module.exports.YAMLException = __webpack_require__(31);
 
 // Re-export all types in case user wants to create custom schema
 module.exports.types = {
-  binary:    __webpack_require__(47),
-  float:     __webpack_require__(44),
-  map:       __webpack_require__(40),
-  null:      __webpack_require__(41),
-  pairs:     __webpack_require__(49),
-  set:       __webpack_require__(50),
-  timestamp: __webpack_require__(45),
-  bool:      __webpack_require__(42),
-  int:       __webpack_require__(43),
-  merge:     __webpack_require__(46),
-  omap:      __webpack_require__(48),
-  seq:       __webpack_require__(39),
-  str:       __webpack_require__(38)
+  binary:    __webpack_require__(48),
+  float:     __webpack_require__(45),
+  map:       __webpack_require__(41),
+  null:      __webpack_require__(42),
+  pairs:     __webpack_require__(50),
+  set:       __webpack_require__(51),
+  timestamp: __webpack_require__(46),
+  bool:      __webpack_require__(43),
+  int:       __webpack_require__(44),
+  merge:     __webpack_require__(47),
+  omap:      __webpack_require__(49),
+  seq:       __webpack_require__(40),
+  str:       __webpack_require__(39)
 };
 
 // Removed functions from JS-YAML 3.0.x
@@ -973,17 +1006,17 @@ module.exports.safeDump            = renamed('safeDump', 'dump');
 
 
 /***/ }),
-/* 28 */
+/* 29 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 
 
 /*eslint-disable max-len,no-use-before-define*/
 
-var common              = __webpack_require__(29);
-var YAMLException       = __webpack_require__(30);
-var makeSnippet         = __webpack_require__(31);
-var DEFAULT_SCHEMA      = __webpack_require__(32);
+var common              = __webpack_require__(30);
+var YAMLException       = __webpack_require__(31);
+var makeSnippet         = __webpack_require__(32);
+var DEFAULT_SCHEMA      = __webpack_require__(33);
 
 
 var _hasOwnProperty = Object.prototype.hasOwnProperty;
@@ -2706,7 +2739,7 @@ module.exports.load    = load;
 
 
 /***/ }),
-/* 29 */
+/* 30 */
 /***/ ((module) => {
 
 
@@ -2771,7 +2804,7 @@ module.exports.extend         = extend;
 
 
 /***/ }),
-/* 30 */
+/* 31 */
 /***/ ((module) => {
 
 // YAML error class. http://stackoverflow.com/questions/8458984
@@ -2832,13 +2865,13 @@ module.exports = YAMLException;
 
 
 /***/ }),
-/* 31 */
+/* 32 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 
 
 
-var common = __webpack_require__(29);
+var common = __webpack_require__(30);
 
 
 // get snippet for a single line, respecting maxLength
@@ -2939,7 +2972,7 @@ module.exports = makeSnippet;
 
 
 /***/ }),
-/* 32 */
+/* 33 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 // JS-YAML's default schema for `safeLoad` function.
@@ -2952,22 +2985,22 @@ module.exports = makeSnippet;
 
 
 
-module.exports = (__webpack_require__(33).extend)({
+module.exports = (__webpack_require__(34).extend)({
   implicit: [
-    __webpack_require__(45),
-    __webpack_require__(46)
+    __webpack_require__(46),
+    __webpack_require__(47)
   ],
   explicit: [
-    __webpack_require__(47),
     __webpack_require__(48),
     __webpack_require__(49),
-    __webpack_require__(50)
+    __webpack_require__(50),
+    __webpack_require__(51)
   ]
 });
 
 
 /***/ }),
-/* 33 */
+/* 34 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 // Standard YAML's Core schema.
@@ -2980,11 +3013,11 @@ module.exports = (__webpack_require__(33).extend)({
 
 
 
-module.exports = __webpack_require__(34);
+module.exports = __webpack_require__(35);
 
 
 /***/ }),
-/* 34 */
+/* 35 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 // Standard YAML's JSON schema.
@@ -2998,18 +3031,18 @@ module.exports = __webpack_require__(34);
 
 
 
-module.exports = (__webpack_require__(35).extend)({
+module.exports = (__webpack_require__(36).extend)({
   implicit: [
-    __webpack_require__(41),
     __webpack_require__(42),
     __webpack_require__(43),
-    __webpack_require__(44)
+    __webpack_require__(44),
+    __webpack_require__(45)
   ]
 });
 
 
 /***/ }),
-/* 35 */
+/* 36 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 // Standard YAML's Failsafe schema.
@@ -3019,28 +3052,28 @@ module.exports = (__webpack_require__(35).extend)({
 
 
 
-var Schema = __webpack_require__(36);
+var Schema = __webpack_require__(37);
 
 
 module.exports = new Schema({
   explicit: [
-    __webpack_require__(38),
     __webpack_require__(39),
-    __webpack_require__(40)
+    __webpack_require__(40),
+    __webpack_require__(41)
   ]
 });
 
 
 /***/ }),
-/* 36 */
+/* 37 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 
 
 /*eslint-disable max-len*/
 
-var YAMLException = __webpack_require__(30);
-var Type          = __webpack_require__(37);
+var YAMLException = __webpack_require__(31);
+var Type          = __webpack_require__(38);
 
 
 function compileList(schema, name) {
@@ -3159,12 +3192,12 @@ module.exports = Schema;
 
 
 /***/ }),
-/* 37 */
+/* 38 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 
 
-var YAMLException = __webpack_require__(30);
+var YAMLException = __webpack_require__(31);
 
 var TYPE_CONSTRUCTOR_OPTIONS = [
   'kind',
@@ -3231,30 +3264,16 @@ module.exports = Type;
 
 
 /***/ }),
-/* 38 */
-/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
-
-
-
-var Type = __webpack_require__(37);
-
-module.exports = new Type('tag:yaml.org,2002:str', {
-  kind: 'scalar',
-  construct: function (data) { return data !== null ? data : ''; }
-});
-
-
-/***/ }),
 /* 39 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 
 
-var Type = __webpack_require__(37);
+var Type = __webpack_require__(38);
 
-module.exports = new Type('tag:yaml.org,2002:seq', {
-  kind: 'sequence',
-  construct: function (data) { return data !== null ? data : []; }
+module.exports = new Type('tag:yaml.org,2002:str', {
+  kind: 'scalar',
+  construct: function (data) { return data !== null ? data : ''; }
 });
 
 
@@ -3264,11 +3283,11 @@ module.exports = new Type('tag:yaml.org,2002:seq', {
 
 
 
-var Type = __webpack_require__(37);
+var Type = __webpack_require__(38);
 
-module.exports = new Type('tag:yaml.org,2002:map', {
-  kind: 'mapping',
-  construct: function (data) { return data !== null ? data : {}; }
+module.exports = new Type('tag:yaml.org,2002:seq', {
+  kind: 'sequence',
+  construct: function (data) { return data !== null ? data : []; }
 });
 
 
@@ -3278,7 +3297,21 @@ module.exports = new Type('tag:yaml.org,2002:map', {
 
 
 
-var Type = __webpack_require__(37);
+var Type = __webpack_require__(38);
+
+module.exports = new Type('tag:yaml.org,2002:map', {
+  kind: 'mapping',
+  construct: function (data) { return data !== null ? data : {}; }
+});
+
+
+/***/ }),
+/* 42 */
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+
+
+var Type = __webpack_require__(38);
 
 function resolveYamlNull(data) {
   if (data === null) return true;
@@ -3314,12 +3347,12 @@ module.exports = new Type('tag:yaml.org,2002:null', {
 
 
 /***/ }),
-/* 42 */
+/* 43 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 
 
-var Type = __webpack_require__(37);
+var Type = __webpack_require__(38);
 
 function resolveYamlBoolean(data) {
   if (data === null) return false;
@@ -3355,13 +3388,13 @@ module.exports = new Type('tag:yaml.org,2002:bool', {
 
 
 /***/ }),
-/* 43 */
+/* 44 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 
 
-var common = __webpack_require__(29);
-var Type   = __webpack_require__(37);
+var common = __webpack_require__(30);
+var Type   = __webpack_require__(38);
 
 function isHexCode(c) {
   return ((0x30/* 0 */ <= c) && (c <= 0x39/* 9 */)) ||
@@ -3517,13 +3550,13 @@ module.exports = new Type('tag:yaml.org,2002:int', {
 
 
 /***/ }),
-/* 44 */
+/* 45 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 
 
-var common = __webpack_require__(29);
-var Type   = __webpack_require__(37);
+var common = __webpack_require__(30);
+var Type   = __webpack_require__(38);
 
 var YAML_FLOAT_PATTERN = new RegExp(
   // 2.5e4, 2.5 and integers
@@ -3620,12 +3653,12 @@ module.exports = new Type('tag:yaml.org,2002:float', {
 
 
 /***/ }),
-/* 45 */
+/* 46 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 
 
-var Type = __webpack_require__(37);
+var Type = __webpack_require__(38);
 
 var YAML_DATE_REGEXP = new RegExp(
   '^([0-9][0-9][0-9][0-9])'          + // [1] year
@@ -3714,12 +3747,12 @@ module.exports = new Type('tag:yaml.org,2002:timestamp', {
 
 
 /***/ }),
-/* 46 */
+/* 47 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 
 
-var Type = __webpack_require__(37);
+var Type = __webpack_require__(38);
 
 function resolveYamlMerge(data) {
   return data === '<<' || data === null;
@@ -3732,7 +3765,7 @@ module.exports = new Type('tag:yaml.org,2002:merge', {
 
 
 /***/ }),
-/* 47 */
+/* 48 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 
@@ -3740,7 +3773,7 @@ module.exports = new Type('tag:yaml.org,2002:merge', {
 /*eslint-disable no-bitwise*/
 
 
-var Type = __webpack_require__(37);
+var Type = __webpack_require__(38);
 
 
 // [ 64, 65, 66 ] -> [ padding, CR, LF ]
@@ -3863,12 +3896,12 @@ module.exports = new Type('tag:yaml.org,2002:binary', {
 
 
 /***/ }),
-/* 48 */
+/* 49 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 
 
-var Type = __webpack_require__(37);
+var Type = __webpack_require__(38);
 
 var _hasOwnProperty = Object.prototype.hasOwnProperty;
 var _toString       = Object.prototype.toString;
@@ -3913,12 +3946,12 @@ module.exports = new Type('tag:yaml.org,2002:omap', {
 
 
 /***/ }),
-/* 49 */
+/* 50 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 
 
-var Type = __webpack_require__(37);
+var Type = __webpack_require__(38);
 
 var _toString = Object.prototype.toString;
 
@@ -3972,12 +4005,12 @@ module.exports = new Type('tag:yaml.org,2002:pairs', {
 
 
 /***/ }),
-/* 50 */
+/* 51 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 
 
-var Type = __webpack_require__(37);
+var Type = __webpack_require__(38);
 
 var _hasOwnProperty = Object.prototype.hasOwnProperty;
 
@@ -4007,16 +4040,16 @@ module.exports = new Type('tag:yaml.org,2002:set', {
 
 
 /***/ }),
-/* 51 */
+/* 52 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 
 
 /*eslint-disable no-use-before-define*/
 
-var common              = __webpack_require__(29);
-var YAMLException       = __webpack_require__(30);
-var DEFAULT_SCHEMA      = __webpack_require__(32);
+var common              = __webpack_require__(30);
+var YAMLException       = __webpack_require__(31);
+var DEFAULT_SCHEMA      = __webpack_require__(33);
 
 var _toString       = Object.prototype.toString;
 var _hasOwnProperty = Object.prototype.hasOwnProperty;
@@ -4978,13 +5011,13 @@ module.exports.dump = dump;
 
 
 /***/ }),
-/* 52 */
+/* 53 */
 /***/ ((module) => {
 
 module.exports = require("url");
 
 /***/ }),
-/* 53 */
+/* 54 */
 /***/ ((__unused_webpack_module, exports, __webpack_require__) => {
 
 
@@ -5053,8 +5086,8 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.deactivate = exports.activate = void 0;
 const vscode = __webpack_require__(1);
 const sushiController_1 = __webpack_require__(2);
-const hapiController_1 = __webpack_require__(15);
-const debugHandler_1 = __webpack_require__(53);
+const hapiController_1 = __webpack_require__(18);
+const debugHandler_1 = __webpack_require__(54);
 function activate(context) {
     let debugHandler = new debugHandler_1.DebugHandler();
     debugHandler.log("info", "Extension started");

@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { DebugHandler } from './debugHandler';
 import * as fs from 'fs';
 import { ProxySettings } from '../models/proxySettings';
+import { SushiSettings } from '../models/sushiSettings';
 
 export class ConfigHandler{
     debugHandler : DebugHandler;
@@ -9,17 +10,24 @@ export class ConfigHandler{
     constructor(debugHandler : DebugHandler){
         this.debugHandler = debugHandler;
     }
-   
+
     private getActualConfiguration() : vscode.WorkspaceConfiguration {
         return vscode.workspace.getConfiguration('codfsh');
     }
-    
+
     public getFilePathFromConfig(section: string): string {
         let config = this.getActualConfiguration();
         let path =  config.get<string>(section);
         return this.check(path,section);
     }
-    
+
+    public getSushiSettings(section: string): SushiSettings {
+        let config = this.getActualConfiguration();
+        let buildSnapshots =  config.get<boolean>(section+'.BuildSnapshots');
+        buildSnapshots = this.isBoolSectionDefined(buildSnapshots, section+'.BuildSnapshots');
+        return new SushiSettings(buildSnapshots);
+    }
+
     public getProxySettings(section: string) : ProxySettings {
         let config = this.getActualConfiguration();
         let active =  config.get<boolean>(section+'.enabled');
@@ -28,7 +36,7 @@ export class ConfigHandler{
         address = this.isStringSectionDefined(address, section+'.ipAddress');
         return new ProxySettings(active,address);
     }
-    
+
     private check(path: string | undefined, section: string) : string {
         path = this.isStringSectionDefined(path, section);
         if (!fs.existsSync(path)) {
