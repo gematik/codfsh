@@ -38,9 +38,9 @@ export class HapiOutputParser{
     }
 
     getFilesValidated(logOutput: string, numberOfFiles: number) : ValidationResult[]{
-        let regex= /(\n\s\sValidate\s(?<filename>.*)\n)(.|\n)*\*(?<summary>\w+\*\:.*)\n(?<text>(.|\n)+)/gm;
+        let regex= /(\n\s+Validate\s(?<filename>.*)\n)(.|\n)*\n(\*)?(?<summary>\w+(\*)?\:.*)\n(?<text>(.|\n)+)/gm;
 
-        if (numberOfFiles>1){
+        if (numberOfFiles > 1){
             regex = /-- (?<filename>.*) -+\n(?<summary>.*)\n\s+(?<text>((.|\n))+?)-{2,}/gm;
         }
 
