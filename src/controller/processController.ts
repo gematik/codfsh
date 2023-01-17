@@ -4,9 +4,11 @@ import { DebugHandler } from './debugHandler';
 export class ProcessController{
 
     debugHandler : DebugHandler;
+    outputChannels : vscode.OutputChannel[];
 
     constructor(debugHandler : DebugHandler){
         this.debugHandler = debugHandler;
+        this.outputChannels = [];
     }
 
     public execShellCommandAsync(cmd: string, arg:string[], outputChannel: string) : Promise<string>{
@@ -14,27 +16,26 @@ export class ProcessController{
             try {
                 let logCommand = cmd + ' ' + arg.join(' ');
 
-                let output = this.prepareOutput(outputChannel);
+                let channel = this.prepareChannel(outputChannel);
                 let stringoutput = "";
 
                 this.debugHandler.log("info", "Executing: '" + logCommand + "'");
-                output.appendLine(logCommand);
+                channel.appendLine(logCommand);
 
                 const run = spawn(cmd,arg);
                 run.stdout.on('data', (data: any) => {
-                    output.appendLine(data);
-                    this.debugHandler.log("info" , data);
+                    channel.appendLine(data);
                     stringoutput += data;
                 });
 
                 run.stderr.on('data', (data: any) => {
-                    output.appendLine(data);
+                    channel.appendLine(data);
                     this.debugHandler.log("info" , data);
                     stringoutput += data;
                 });
 
                 run.on('close', function (code:any) {
-                    output.appendLine(`child process exited with code ${code}`);
+                    channel.appendLine(`child process exited with code ${code}`);
                     resolve(stringoutput);
                 });
             } catch (e : any) {
@@ -44,11 +45,15 @@ export class ProcessController{
         });
     }
 
-    private prepareOutput(outputChannel: string) {
-        let output = vscode.window.createOutputChannel(outputChannel);
-        output.clear();
-        output.show();
-        return output;
+    private prepareChannel(channelName: string) {
+        let channel = this.outputChannels.filter(c => c.name === channelName)[0];
+        if (!channel) {
+            channel = vscode.window.createOutputChannel(channelName);
+            this.outputChannels.push(channel);
+        } 
+        channel.clear();
+        channel.show();
+        return channel;
     }
 
     public execShellCommandOld(cmdOnly: string, arg:string[], outputChannel: string) : Promise<string>{

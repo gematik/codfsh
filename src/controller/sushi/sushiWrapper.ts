@@ -11,10 +11,10 @@ export class SushiWrapper {
     pathController : PathController;
     configHandler: ConfigHandler;
 
-    constructor(debugHandler : DebugHandler, pathController : PathController, configHandler: ConfigHandler ){
+    constructor(debugHandler : DebugHandler, pathController : PathController, configHandler: ConfigHandler, processController : ProcessController ){
         this.debugHandler = debugHandler;
         this.pathController = pathController;
-        this.processController = new ProcessController(this.debugHandler);
+        this.processController = processController;
         this.configHandler = configHandler;
     }
 

@@ -30,7 +30,7 @@ export class DependencyController{
         return result;
     }
 
-    private parseDependencies(sushiConfigPath: string) : Dependency[] {
+    public parseDependencies(sushiConfigPath: string) : Dependency[] {
             let config = this.parseConfig(sushiConfigPath);
             let dependencies = [];
             if(config?.dependencies) {
