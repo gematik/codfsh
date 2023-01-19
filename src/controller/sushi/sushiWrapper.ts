@@ -3,6 +3,7 @@ import { PathController } from "../pathController";
 import { ProcessController } from "../processController";
 import { ConfigHandler } from "../configHandler";
 import { SushiSettings } from "../../models/sushiSettings";
+const path = require("path");
 
 export class SushiWrapper {
 
@@ -22,16 +23,22 @@ export class SushiWrapper {
         return new Promise(async (resolve, reject) => {
             let sushiSettings = this.configHandler.getSushiSettings("Sushi.Settings");
             try{
-                    let args : string[] = [];
-                    args.push(ressourceFolderPath);
-                    this.handleSushieSettings(sushiSettings, args);
-                    let output = await this.processController.execShellCommandAsync("sushi", args, "Sushi");
-                    resolve(output);
-                }
-                catch(e){
-                    reject(e);
-                }
+                let output = await this.runSushi(ressourceFolderPath, sushiSettings);
+                resolve(output);
+            }
+            catch(e){
+                reject(e);
+            }
         });
+    }
+
+    private async runSushi(ressourceFolderPath: string, sushiSettings: SushiSettings) {
+        let args: string[] = [];
+        const ressourceFolderPathPosix = ressourceFolderPath.split(path.sep).join(path.posix.sep);
+        args.push(ressourceFolderPathPosix);
+        this.handleSushieSettings(sushiSettings, args);
+        let output = await this.processController.execShellCommandAsync("sushi", args, "Sushi");
+        return output;
     }
 
     private handleSushieSettings(sushiSettings: SushiSettings, args: string[]) {

@@ -11,6 +11,7 @@ import { ConfigHandler } from '../configHandler';
 import { DependencyEnsurer } from '../dependencyEnsurer';
 import { ProcessController } from '../processController';
 import { DependencyController } from '../dependencyController';
+import { FileHander } from '../fileHandler';
 
 export class SushiController{
     debugHandler : DebugHandler;
@@ -22,6 +23,7 @@ export class SushiController{
     processController : ProcessController;
     dependencyController: DependencyController;
     dependencyEnsurer : DependencyEnsurer;
+
 
     constructor(debugHandler : DebugHandler, diagnosticCollection: vscode.DiagnosticCollection){
         this.debugHandler = debugHandler;

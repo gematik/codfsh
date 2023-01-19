@@ -43,16 +43,14 @@ export class PathController{
             files.forEach((file: string) => {
                 if (path.basename(file) === "sushi-config.yaml"){
                     find = file;
-                    resolve(file);
+                    resolve(vscode.Uri.file(file).fsPath);
                     return;
                 }
             }); 
 
-            if(find !== undefined){
-                return find;
-            }else{
-                reject("Unable to find a sushi-config.yaml in current Workpace."); 
-            }
+
+            reject("Unable to find a sushi-config.yaml in current Workpace."); 
+            
         });
     }
 

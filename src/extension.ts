@@ -18,12 +18,12 @@ export function activate(context: vscode.ExtensionContext) {
 		});
 
 		let runHapiSubscription = vscode.commands.registerCommand('codfsh.runHapi', () => {
-			hapiController.execute();
+			hapiController.executeForCurrentFile();
 		});
 
-		let runFhirFshSubscription = vscode.commands.registerCommand('codfsh.runFhirFsh', () => {
-			debugHandler.log("info","Executing Sushi and Hapi");
-			vscode.window.showInformationMessage('Running Sushi and Hapi!');
+		let runFhirFshSubscription = vscode.commands.registerCommand('codfsh.runAll', () => {
+		//	sushiController.execute();
+			hapiController.executeAll();
 		});
 
 		context.subscriptions.push(runSushiSubscription);

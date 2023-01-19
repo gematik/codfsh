@@ -19,26 +19,43 @@ const diagnosticController_1 = __webpack_require__(7);
 const sushiOutputParser_1 = __webpack_require__(9);
 const pathController_1 = __webpack_require__(11);
 const configHandler_1 = __webpack_require__(15);
+const dependencyEnsurer_1 = __webpack_require__(55);
+const processController_1 = __webpack_require__(4);
+const dependencyController_1 = __webpack_require__(26);
 class SushiController {
     constructor(debugHandler, diagnosticCollection) {
         this.debugHandler = debugHandler;
         this.pathController = new pathController_1.PathController(this.debugHandler);
         this.configHandler = new configHandler_1.ConfigHandler(this.debugHandler);
-        this.sushiWrapper = new sushiWrapper_1.SushiWrapper(this.debugHandler, this.pathController, this.configHandler);
+        this.processController = new processController_1.ProcessController(this.debugHandler);
+        this.sushiWrapper = new sushiWrapper_1.SushiWrapper(this.debugHandler, this.pathController, this.configHandler, this.processController);
         this.diagnosticController = new diagnosticController_1.DiagnosticController(this.debugHandler, diagnosticCollection);
         this.sushiOutputParser = new sushiOutputParser_1.SushiOutputParser(this.debugHandler);
+        this.dependencyController = new dependencyController_1.DependencyController(this.debugHandler, this.pathController);
+        this.dependencyEnsurer = new dependencyEnsurer_1.DependencyEnsurer(this.debugHandler, this.processController);
     }
     async execute() {
         try {
-            this.debugHandler.log("info", "Running Sushi...", true);
-            const consoleOutput = await this.getConsoleOutput();
-            var diagnostics = this.sushiOutputParser.getDiagnostics(consoleOutput);
-            this.addDiagnostics(diagnostics);
-            this.debugHandler.log("info", "Sushi completed.", true);
+            await this.checkDependencies();
+            await this.runSushi();
         }
         catch (error) {
             this.debugHandler.log("error", error, true);
         }
+    }
+    async checkDependencies() {
+        this.debugHandler.log("info", "Checking FHIR Packages Dependencies...", true);
+        const pathValues = await this.pathController.getPathVariables();
+        const neededDependencies = this.dependencyController.parseDependencies(pathValues.sushiConfigPath);
+        await this.dependencyEnsurer.installMissingDependencies(neededDependencies);
+        this.debugHandler.log("info", "All FHIR Packages Dependencies checked.", true);
+    }
+    async runSushi() {
+        this.debugHandler.log("info", "Started Sushi...", true);
+        const consoleOutput = await this.getConsoleOutput();
+        var diagnostics = this.sushiOutputParser.getDiagnostics(consoleOutput);
+        this.addDiagnostics(diagnostics);
+        this.debugHandler.log("info", "Sushi completed.", true);
     }
     addDiagnostics(diagnostics) {
         this.diagnosticController.clearDiagnosticCollection();
@@ -60,28 +77,33 @@ exports.SushiController = SushiController;
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.SushiWrapper = void 0;
-const processController_1 = __webpack_require__(4);
+const path = __webpack_require__(12);
 class SushiWrapper {
-    constructor(debugHandler, pathController, configHandler) {
+    constructor(debugHandler, pathController, configHandler, processController) {
         this.debugHandler = debugHandler;
         this.pathController = pathController;
-        this.processController = new processController_1.ProcessController(this.debugHandler);
+        this.processController = processController;
         this.configHandler = configHandler;
     }
     async getConsoleOutput(ressourceFolderPath) {
         return new Promise(async (resolve, reject) => {
             let sushiSettings = this.configHandler.getSushiSettings("Sushi.Settings");
             try {
-                let args = [];
-                args.push(ressourceFolderPath);
-                this.handleSushieSettings(sushiSettings, args);
-                let output = await this.processController.execShellCommandAsync("sushi", args, "Sushi");
+                let output = await this.runSushi(ressourceFolderPath, sushiSettings);
                 resolve(output);
             }
             catch (e) {
                 reject(e);
             }
         });
+    }
+    async runSushi(ressourceFolderPath, sushiSettings) {
+        let args = [];
+        const ressourceFolderPathPosix = ressourceFolderPath.split(path.sep).join(path.posix.sep);
+        args.push(ressourceFolderPathPosix);
+        this.handleSushieSettings(sushiSettings, args);
+        let output = await this.processController.execShellCommandAsync("sushi", args, "Sushi");
+        return output;
     }
     handleSushieSettings(sushiSettings, args) {
         if (sushiSettings.generateSnapshots) {
@@ -105,28 +127,28 @@ const node_child_process_1 = __webpack_require__(5);
 class ProcessController {
     constructor(debugHandler) {
         this.debugHandler = debugHandler;
+        this.outputChannels = [];
     }
     execShellCommandAsync(cmd, arg, outputChannel) {
         return new Promise((resolve, reject) => {
             try {
                 let logCommand = cmd + ' ' + arg.join(' ');
-                let output = this.prepareOutput(outputChannel);
+                let channel = this.prepareChannel(outputChannel);
                 let stringoutput = "";
                 this.debugHandler.log("info", "Executing: '" + logCommand + "'");
-                output.appendLine(logCommand);
+                channel.appendLine(logCommand);
                 const run = (0, node_child_process_1.spawn)(cmd, arg);
                 run.stdout.on('data', (data) => {
-                    output.appendLine(data);
-                    this.debugHandler.log("info", data);
+                    channel.appendLine(data);
                     stringoutput += data;
                 });
                 run.stderr.on('data', (data) => {
-                    output.appendLine(data);
+                    channel.appendLine(data);
                     this.debugHandler.log("info", data);
                     stringoutput += data;
                 });
                 run.on('close', function (code) {
-                    output.appendLine(`child process exited with code ${code}`);
+                    channel.appendLine(`child process exited with code ${code}`);
                     resolve(stringoutput);
                 });
             }
@@ -136,11 +158,15 @@ class ProcessController {
             }
         });
     }
-    prepareOutput(outputChannel) {
-        let output = vscode.window.createOutputChannel(outputChannel);
-        output.clear();
-        output.show();
-        return output;
+    prepareChannel(channelName) {
+        let channel = this.outputChannels.filter(c => c.name === channelName)[0];
+        if (!channel) {
+            channel = vscode.window.createOutputChannel(channelName);
+            this.outputChannels.push(channel);
+        }
+        channel.clear();
+        channel.show();
+        return channel;
     }
     execShellCommandOld(cmdOnly, arg, outputChannel) {
         const exec = (__webpack_require__(6).exec);
@@ -366,16 +392,11 @@ class PathController {
             files.forEach((file) => {
                 if (path.basename(file) === "sushi-config.yaml") {
                     find = file;
-                    resolve(file);
+                    resolve(vscode.Uri.file(file).fsPath);
                     return;
                 }
             });
-            if (find !== undefined) {
-                return find;
-            }
-            else {
-                reject("Unable to find a sushi-config.yaml in current Workpace.");
-            }
+            reject("Unable to find a sushi-config.yaml in current Workpace.");
         });
     }
     getResouceFolder(sushiConfigPath) {
@@ -533,12 +554,13 @@ const errorHandler_1 = __webpack_require__(24);
 const notificationController_1 = __webpack_require__(25);
 const pathController_1 = __webpack_require__(11);
 const dependencyController_1 = __webpack_require__(26);
-const url = __webpack_require__(53);
+const fileHandler_1 = __webpack_require__(56);
 class HapiController {
     constructor(debugHandler, diagnosticCollection) {
         this.debugHandler = debugHandler;
         this.diagnosticController = new diagnosticController_1.DiagnosticController(this.debugHandler, diagnosticCollection);
         this.configHandler = new configHandler_1.ConfigHandler(this.debugHandler);
+        this.fileHandler = new fileHandler_1.FileHander(this.debugHandler);
         this.pathController = new pathController_1.PathController(this.debugHandler);
         this.dependencyController = new dependencyController_1.DependencyController(this.debugHandler, this.pathController);
         this.hapiWrapper = new hapiWrapper_1.HapiWrapper(this.debugHandler, this.configHandler);
@@ -547,13 +569,11 @@ class HapiController {
         this.errorHandler = new errorHandler_1.ErrorHandler(this.debugHandler);
         this.notificationController = new notificationController_1.NotificationController(this.debugHandler);
     }
-    async execute() {
+    async executeForCurrentFile() {
         try {
             var currentFileUri = vscode.window.activeTextEditor?.document.uri;
             if (currentFileUri) {
-                const currentFilePath = currentFileUri.fsPath;
                 const pathValues = await this.pathController.getPathVariables();
-                this.debugHandler.log("info", "Current file is :'" + currentFilePath + "'");
                 let filesForValidation = this.fileConnector.identifyGeneratedRessources(currentFileUri, pathValues.ressourceFolderPath);
                 this.validate(pathValues, filesForValidation);
             }
@@ -561,6 +581,24 @@ class HapiController {
         catch (e) {
             this.debugHandler.log("error", e, true);
         }
+    }
+    async executeAll() {
+        try {
+            const pathValues = await this.pathController.getPathVariables();
+            let fshFiles = await this.fileHandler.getGeneratedFiles(pathValues.ressourceFolderPath);
+            let filesForValidation = this.concatGeneratedRessources(fshFiles, pathValues);
+            this.validate(pathValues, filesForValidation);
+        }
+        catch (e) {
+            this.debugHandler.log("error", e, true);
+        }
+    }
+    concatGeneratedRessources(fshFiles, pathValues) {
+        let filesForValidation = [];
+        for (const fshFile of fshFiles) {
+            filesForValidation.concat(this.fileConnector.identifyGeneratedRessources(fshFile, pathValues.ressourceFolderPath));
+        }
+        return filesForValidation;
     }
     async validate(pathValues, filesForValidation) {
         this.notificationController.notifyStarted(filesForValidation);
@@ -668,7 +706,7 @@ class HapiOutputParser {
         return validationResult.diagnostics.filter(d => d.severity === searchSeverity).length;
     }
     getFilesValidated(logOutput, numberOfFiles) {
-        let regex = /(\n\s\sValidate\s(?<filename>.*)\n)(.|\n)*\*(?<summary>\w+\*\:.*)\n(?<text>(.|\n)+)/gm;
+        let regex = /(\n\s+Validate\s(?<filename>.*)\n)(.|\n)*\n(\*)?(?<summary>\w+(\*)?\:.*)\n(?<text>(.|\n)+)/gm;
         if (numberOfFiles > 1) {
             regex = /-- (?<filename>.*) -+\n(?<summary>.*)\n\s+(?<text>((.|\n))+?)-{2,}/gm;
         }
@@ -878,6 +916,19 @@ class NotificationController {
                 vscode.workspace.openTextDocument(fileToValidate).then(doc => {
                     vscode.window.showTextDocument(doc);
                 });
+            }
+        });
+    }
+    surveyInstallMissingDependency(missingDependencies) {
+        return new Promise(async (resolve, reject) => {
+            try {
+                vscode.window.showWarningMessage(`FHIR Package '${missingDependencies.name}#${missingDependencies.version}' is missing in local cache`, 'Install', 'Skip').then(selection => {
+                    resolve(selection === 'Install');
+                });
+            }
+            catch (e) {
+                this.debugHandler.log("error", e);
+                reject(e);
             }
         });
     }
@@ -5011,12 +5062,7 @@ module.exports.dump = dump;
 
 
 /***/ }),
-/* 53 */
-/***/ ((module) => {
-
-module.exports = require("url");
-
-/***/ }),
+/* 53 */,
 /* 54 */
 /***/ ((__unused_webpack_module, exports, __webpack_require__) => {
 
@@ -5047,6 +5093,137 @@ class DebugHandler {
     }
 }
 exports.DebugHandler = DebugHandler;
+
+
+/***/ }),
+/* 55 */
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.DependencyEnsurer = void 0;
+const dependency_1 = __webpack_require__(27);
+const notificationController_1 = __webpack_require__(25);
+class DependencyEnsurer {
+    constructor(debugHandler, processController) {
+        this.debugHandler = debugHandler;
+        this.notificationController = new notificationController_1.NotificationController(debugHandler);
+        this.processController = processController;
+    }
+    async installMissingDependencies(dependencies) {
+        let installedDependencies = await this.getInstalledDependencies();
+        for (const dependency of dependencies) {
+            if (installedDependencies.filter(i => i.name === dependency.name && i.version === dependency.version)) {
+                this.debugHandler.log("info", `Package '${dependency.name}#${dependency.version}' already installed`);
+            }
+            else {
+                if (await this.notificationController.surveyInstallMissingDependency(dependency)) {
+                    this.debugHandler.log("info", `Installing missing FHIR Package ${dependency.name}#${dependency.version}`, true);
+                    let output = await this.installDependency(dependency);
+                    this.debugHandler.log("info", output);
+                }
+            }
+        }
+    }
+    async installDependency(dependency) {
+        return new Promise(async (resolve, reject) => {
+            try {
+                this.debugHandler.log("info", `Started installation of package '${dependency.name}#${dependency.version}'`);
+                const output = await this.processController.execShellCommandAsync("fhir", ['install', dependency.name, dependency.version], "Firely Terminal");
+                this.debugHandler.log("info", `Installation of package '${dependency.name}#${dependency.version}' finished!`);
+                resolve(output);
+            }
+            catch (e) {
+                this.debugHandler.log("error", e);
+                reject(e);
+            }
+        });
+    }
+    async getInstalledDependencies() {
+        return new Promise(async (resolve, reject) => {
+            try {
+                const output = await this.processController.execShellCommandAsync("fhir", ['cache'], "Firely Terminal");
+                const dependencies = this.parseDependencies(output);
+                resolve(dependencies);
+            }
+            catch (e) {
+                this.debugHandler.log("error", e);
+                reject(e);
+            }
+        });
+    }
+    parseDependencies(output) {
+        const regex = /(?<package>.+?)@(?<version>.*)/gm;
+        let m;
+        let dependencies = [];
+        while ((m = regex.exec(output)) !== null) {
+            if (m.index === regex.lastIndex) {
+                regex.lastIndex++;
+            }
+            if (m.groups?.package) {
+                let dependency = new dependency_1.Dependency(m.groups?.package, m.groups?.version);
+                dependencies.push(dependency);
+            }
+        }
+        return dependencies;
+    }
+}
+exports.DependencyEnsurer = DependencyEnsurer;
+
+
+/***/ }),
+/* 56 */
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.FileHander = void 0;
+const path_1 = __webpack_require__(12);
+const { readdir } = (__webpack_require__(14).promises);
+const path_2 = __webpack_require__(12);
+const fs = __webpack_require__(14);
+class FileHander {
+    constructor(debugHandler) {
+        this.debugHandler = debugHandler;
+    }
+    getGeneratedFiles(ressourcesFolder) {
+        return new Promise(async (resolve, reject) => {
+            let generatedFiles = [];
+            try {
+                let generatedFolder = (0, path_1.join)(ressourcesFolder, 'fsh-generated', 'resources');
+                let files = fs.readdirSync(generatedFolder);
+                files.forEach(file => {
+                    generatedFiles.push((0, path_1.join)(generatedFolder, file));
+                    this.debugHandler.log("info", "Found generated File " + (0, path_1.join)(generatedFolder, file));
+                });
+                resolve(generatedFiles);
+            }
+            catch (e) {
+                reject(e);
+            }
+        });
+    }
+    async getFilesFromDirectoryRecursivly(dir) {
+        async function getFiles(dir) {
+            const dirents = await readdir(dir, { withFileTypes: true }).filter();
+            const files = await Promise.all(dirents.map((dirent) => {
+                const res = (0, path_2.resolve)(dir, dirent.name);
+                return dirent.isDirectory() ? getFiles(res) : res;
+            }));
+            return files.flat();
+        }
+        return new Promise(async (resolve, reject) => {
+            try {
+                let files = await getFiles(dir);
+                resolve(files);
+            }
+            catch (e) {
+                reject(e);
+            }
+        });
+    }
+}
+exports.FileHander = FileHander;
 
 
 /***/ })
@@ -5099,11 +5276,11 @@ function activate(context) {
             sushiController.execute();
         });
         let runHapiSubscription = vscode.commands.registerCommand('codfsh.runHapi', () => {
-            hapiController.execute();
+            hapiController.executeForCurrentFile();
         });
-        let runFhirFshSubscription = vscode.commands.registerCommand('codfsh.runFhirFsh', () => {
-            debugHandler.log("info", "Executing Sushi and Hapi");
-            vscode.window.showInformationMessage('Running Sushi and Hapi!');
+        let runFhirFshSubscription = vscode.commands.registerCommand('codfsh.runAll', () => {
+            //	sushiController.execute();
+            hapiController.executeAll();
         });
         context.subscriptions.push(runSushiSubscription);
         context.subscriptions.push(runHapiSubscription);

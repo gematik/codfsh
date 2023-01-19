@@ -9,15 +9,15 @@ export class DependencyEnsurer{
     notificationController: NotificationController;
 
     constructor(debugHandler: DebugHandler, processController : ProcessController){
-        this.notificationController = new NotificationController(debugHandler);
         this.debugHandler = debugHandler;
+        this.notificationController = new NotificationController(debugHandler);
         this.processController = processController;
     }
 
     public async installMissingDependencies(dependencies: Dependency[]){
         let installedDependencies = await this.getInstalledDependencies(); 
         for (const dependency of dependencies) {
-            if (!installedDependencies.filter(i => i.name === dependency.name && i.version === dependency.version)){
+            if (installedDependencies.filter(i => i.name === dependency.name && i.version === dependency.version)){
                 this.debugHandler.log("info", `Package '${dependency.name}#${dependency.version}' already installed`);
             }
             else

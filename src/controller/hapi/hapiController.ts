@@ -11,7 +11,7 @@ import { PathController } from '../pathController';
 import { DebugHandler } from '../debugHandler';
 import { DependencyController } from '../dependencyController';
 import { PathValues } from '../../models/pathValues';
-const url = require('url');
+import { FileHander } from '../fileHandler';
 
 
 export class HapiController{
@@ -25,11 +25,13 @@ export class HapiController{
     fileConnector: FileConnector;
     errorHandler: ErrorHandler;
     notificationController: NotificationController;
+    fileHandler: FileHander;
 
     constructor(debugHandler : DebugHandler, diagnosticCollection: vscode.DiagnosticCollection){
         this.debugHandler = debugHandler;
         this.diagnosticController = new DiagnosticController(this.debugHandler, diagnosticCollection);
         this.configHandler = new ConfigHandler(this.debugHandler);
+        this.fileHandler = new FileHander(this.debugHandler);
         this.pathController = new PathController(this.debugHandler);
         this.dependencyController = new DependencyController(this.debugHandler, this.pathController);
         this.hapiWrapper = new HapiWrapper(this.debugHandler, this.configHandler);
@@ -39,20 +41,41 @@ export class HapiController{
         this.notificationController = new NotificationController(this.debugHandler);
     }
 
-    public async execute() {
+    public async executeForCurrentFile() {
         try {
             var currentFileUri = vscode.window.activeTextEditor?.document.uri;
             if (currentFileUri) {
-                const currentFilePath = currentFileUri.fsPath;
                 const pathValues =  await this.pathController.getPathVariables();
-                this.debugHandler.log("info", "Current file is :'" + currentFilePath + "'");
-                let filesForValidation = this.fileConnector.identifyGeneratedRessources(currentFileUri,pathValues.ressourceFolderPath);
+                let filesForValidation = this.fileConnector.identifyGeneratedRessources(currentFileUri ,pathValues.ressourceFolderPath);
                 this.validate(pathValues, filesForValidation);
             }
         } catch (e: any) {
             this.debugHandler.log("error", e, true);
         }
     }
+
+    public async executeAll() {
+        try {
+            const pathValues =  await this.pathController.getPathVariables();
+            let fshFiles  = await this.fileHandler.getGeneratedFiles(pathValues.ressourceFolderPath);
+            let filesForValidation: string[] = this.concatGeneratedRessources(fshFiles, pathValues);
+            this.validate(pathValues, filesForValidation);               
+            
+        } catch (e: any) {
+            this.debugHandler.log("error", e, true);
+        }
+    }
+
+
+
+    private concatGeneratedRessources(fshFiles: vscode.Uri[], pathValues: PathValues) {
+        let filesForValidation: string[] = [];
+        for (const fshFile of fshFiles) {
+            filesForValidation.concat(this.fileConnector.identifyGeneratedRessources(fshFile, pathValues.ressourceFolderPath));
+        }
+        return filesForValidation;
+    }
+
 
     private async validate(pathValues: PathValues, filesForValidation: string[]) {
         this.notificationController.notifyStarted(filesForValidation);
