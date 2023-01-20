@@ -80,7 +80,7 @@ export class HapiOutputParser{
     private setRange(m: RegExpExecArray) : Range {
         var lineFrom: number = 0;
         var colFrom: number = 0;
-        if (m.groups?.col_from) {
+        if (m.groups?.line_from) {
             lineFrom = +(m.groups?.line_from) - 1;
         }
         if (m.groups?.col_from) {

@@ -11,7 +11,7 @@ export class SushiOutputParser{
     }
 
     public getDiagnostics(logOutput: string){
-        const regex = /(?<severity>\w+)\s(?<message>.*)\n\s+File:\s(?<file>.*)\n\s+Line:\s(?<line_from>\d+)(\s-\s(?<line_to>\d+))?/gm;
+        const regex = /(?<severity>(warn|error))\s+(?<message>.*)\n?(\s+File:\s(?<file>.*))?\s+(Line:\s(?<line_from>\d+)(\s-\s(?<line_to>\d+))?)?/gm;
         let m;
         let output = [] ;
 
@@ -19,19 +19,37 @@ export class SushiOutputParser{
             if (m.index === regex.lastIndex) {
                 regex.lastIndex++;
             }
-            var severityType = DiagnosticSeverity.Error;
-            if (m.groups?.severity === "warn" ){
-                severityType = DiagnosticSeverity.Warning;
-            }
+
             if (m.groups?.message) {
-                var lineFrom: number = +(m.groups?.line_from)- 1;
-                var lineTo: number = lineFrom;
-                if (m.groups?.line_to) {
-                    lineTo = +(m.groups?.line_to) -1;
-                }
-                output.push(new Diagnostic(severityType, m.groups?.message, m.groups?.file, new Range(lineFrom,0,lineTo,200)));
+                let severity = this.setSeverity(m);
+                let range = this.setRange(m);
+                const dia = new Diagnostic(severity, m.groups?.message, m.groups?.file, range);
+                console.log(dia);
+                output.push(dia);
             }
         }
         return output;
+    }
+
+    private setRange(m: RegExpExecArray) : Range {
+        var lineFrom: number = 0;
+        var colFrom: number = 0;
+        if (m.groups?.line_from) {
+            lineFrom = +(m.groups?.line_from) - 1;
+        }
+        if (m.groups?.col_from) {
+            colFrom = +(m.groups?.col_from) - 1;
+        }
+        return new Range(lineFrom, colFrom, lineFrom, 200);
+    }
+
+    private setSeverity(m: RegExpExecArray) {
+        let severityType = DiagnosticSeverity.Error;
+        if(m.groups?.severity) {
+            if (["warn", "Warning"].includes(m.groups.severity)) {
+                severityType = DiagnosticSeverity.Warning;
+            }
+        }
+        return severityType;
     }
 }
