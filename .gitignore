@@ -351,3 +351,4 @@ MigrationBackup/
 dist/extension.js.map
 .gitignore
 dist/extension.js
+/dist/*
