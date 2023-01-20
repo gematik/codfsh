@@ -15,9 +15,9 @@ export class DependencyEnsurer{
     }
 
     public async installMissingDependencies(dependencies: Dependency[]){
-        let installedDependencies = await this.getInstalledDependencies(); 
+        let installedDependencies = await this.getInstalledDependencies();
         for (const dependency of dependencies) {
-            if (!installedDependencies.filter(i => i.name === dependency.name && i.version === dependency.version)){
+            if (installedDependencies.filter(i => i.name === dependency.name && i.version === dependency.version)){
                 this.debugHandler.log("info", `Package '${dependency.name}#${dependency.version}' already installed`);
             }
             else
@@ -26,7 +26,7 @@ export class DependencyEnsurer{
                     this.debugHandler.log("info", `Installing missing FHIR Package ${dependency.name}#${dependency.version}`, true);
                     let output = await this.installDependency(dependency);
                     this.debugHandler.log("info", output);
-                }                
+                }
             }
         }
     }
@@ -50,7 +50,7 @@ export class DependencyEnsurer{
         return new Promise(async (resolve, reject) => {
             try {
                 const output = await this.processController.execShellCommandAsync("fhir", ['cache'], "Firely Terminal");
-                const dependencies = this.parseDependencies(output);            
+                const dependencies = this.parseDependencies(output);
                 resolve(dependencies);
             }
             catch (e: any) {
@@ -73,9 +73,9 @@ export class DependencyEnsurer{
                 let dependency = new Dependency(m.groups?.package, m.groups?.version);
                 dependencies.push(dependency);
             }
-           
+
         }
         return dependencies;
     }
-   
+
 }
