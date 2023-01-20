@@ -2,7 +2,7 @@
   "name": "codfsh",
   "displayName": "codfsh",
   "description": "Tool for integration of sushi interpreter/compiler and hapi validator ",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "repository": {
 		"type": "git",
 		"url": "https://github.com/HendrikGematik/codfsh"
