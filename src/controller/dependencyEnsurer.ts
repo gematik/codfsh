@@ -50,7 +50,7 @@ export class DependencyEnsurer{
         return new Promise(async (resolve, reject) => {
             try {
                 const output = await this.processController.execShellCommandAsync("fhir", ['cache'], "Firely Terminal");
-                const dependencies = this.parseDependencies(output);
+                const dependencies = this.parseInstalledDependencies(output);
                 resolve(dependencies);
             }
             catch (e: any) {
@@ -60,7 +60,7 @@ export class DependencyEnsurer{
         });
     }
 
-    private parseDependencies(output: string): Dependency[] {
+    private parseInstalledDependencies(output: string): Dependency[] {
         const regex = /(?<package>.+?)@(?<version>.*)/gm;
         let m;
         let dependencies = [] ;
