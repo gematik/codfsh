@@ -64,7 +64,6 @@ export class SushiController{
     }
 
     private addDiagnostics(diagnostics: Diagnostic[]) {
-        this.diagnosticController.clearDiagnosticCollection();
         this.diagnosticController.addDiagnostics(diagnostics);
     }
 

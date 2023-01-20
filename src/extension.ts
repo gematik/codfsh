@@ -14,16 +14,19 @@ export function activate(context: vscode.ExtensionContext) {
 		let hapiController = new HapiController(debugHandler, diagnosticCollection);
 
 		let runSushiSubscription = vscode.commands.registerCommand('codfsh.runSushi', () => {
+        	diagnosticCollection.clear();
 			sushiController.execute();
 		});
 
 		let runHapiSubscription = vscode.commands.registerCommand('codfsh.runHapi', () => {
+			diagnosticCollection.clear();
 			hapiController.executeForCurrentFile();
 		});
 
-		let runFhirFshSubscription = vscode.commands.registerCommand('codfsh.runAll', () => {
-		//	sushiController.execute();
-			hapiController.executeAll();
+		let runFhirFshSubscription = vscode.commands.registerCommand('codfsh.runAll', async () => {
+			diagnosticCollection.clear();
+			await sushiController.execute();
+			await hapiController.executeAll();
 		});
 
 		context.subscriptions.push(runSushiSubscription);

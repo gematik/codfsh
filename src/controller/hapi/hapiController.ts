@@ -13,7 +13,6 @@ import { DependencyController } from '../dependencyController';
 import { PathValues } from '../../models/pathValues';
 import { FileHander } from '../fileHandler';
 
-
 export class HapiController{
     debugHandler : DebugHandler;
     dependencyController: DependencyController;
@@ -58,24 +57,13 @@ export class HapiController{
         try {
             const pathValues =  await this.pathController.getPathVariables();
             let fshFiles  = await this.fileHandler.getGeneratedFiles(pathValues.ressourceFolderPath);
-            let filesForValidation: string[] = this.concatGeneratedRessources(fshFiles, pathValues);
-            this.validate(pathValues, filesForValidation);               
-            
+            //let filesForValidation: string[] = this.concatGeneratedRessources(fshFiles, pathValues);
+            this.validate(pathValues, fshFiles);
+
         } catch (e: any) {
             this.debugHandler.log("error", e, true);
         }
     }
-
-
-
-    private concatGeneratedRessources(fshFiles: vscode.Uri[], pathValues: PathValues) {
-        let filesForValidation: string[] = [];
-        for (const fshFile of fshFiles) {
-            filesForValidation.concat(this.fileConnector.identifyGeneratedRessources(fshFile, pathValues.ressourceFolderPath));
-        }
-        return filesForValidation;
-    }
-
 
     private async validate(pathValues: PathValues, filesForValidation: string[]) {
         this.notificationController.notifyStarted(filesForValidation);
@@ -87,7 +75,6 @@ export class HapiController{
 
     private processValidationResults(consoleOutput: string, numberOfFiles: number) {
         var validationResults = this.hapiOutputParser.getValidationResults(consoleOutput, numberOfFiles);
-        this.diagnosticController.clearDiagnosticCollection();
         validationResults.forEach((result : ValidationResult) => {
             this.diagnosticController.addDiagnostics(result.diagnostics);
             this.notificationController.notifyCompleted(result.file + " " + result.summary);
