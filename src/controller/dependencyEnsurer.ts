@@ -9,8 +9,8 @@ export class DependencyEnsurer{
     notificationController: NotificationController;
 
     constructor(debugHandler: DebugHandler, processController : ProcessController){
-        this.notificationController = new NotificationController(debugHandler);
         this.debugHandler = debugHandler;
+        this.notificationController = new NotificationController(debugHandler);
         this.processController = processController;
     }
 

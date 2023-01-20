@@ -51,8 +51,8 @@
     },
     "commands": [
       {
-        "command": "codfsh.runFhirFsh",
-        "title": "FHIR Fish the sushi to an HAPI end"
+        "command": "codfsh.runAll",
+        "title": "Run Sushi and Hapi on all Files"
       },
       {
         "command": "codfsh.runSushi",

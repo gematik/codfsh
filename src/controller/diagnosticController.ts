@@ -15,10 +15,6 @@ export class DiagnosticController{
         this.diagnosticManipulator = new DiagnosticManipulator();
     }
 
-    public clearDiagnosticCollection(){
-        this.diagnosticCollection.clear();
-    }
-
     public addDiagnostics(diagnostics: Diagnostic[]) {
         let distinctDiagnosticsPerFile = this.diagnosticManipulator.manipulate(diagnostics);
         for (const file in distinctDiagnosticsPerFile) {
