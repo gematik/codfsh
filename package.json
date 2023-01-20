@@ -51,10 +51,6 @@
     },
     "commands": [
       {
-        "command": "codfsh.runAll",
-        "title": "Run Sushi and Hapi on all Files"
-      },
-      {
         "command": "codfsh.runSushi",
         "title": "Run Sushi"
       },
@@ -62,8 +58,27 @@
         "command": "codfsh.runHapi",
         "title": "Run Hapi validator",
         "icon": "$(play)"
+      },
+      {
+        "command": "codfsh.runAll",
+        "title": "Run Sushi and Hapi on all Files"
       }
-    ]
+    ],
+    "keybindings": [{
+      "command": "codfsh.runSushi",
+      "key": "f5",
+      "mac": "f5"
+    },
+    {
+      "command": "codfsh.runHapi",
+      "key": "Shift+f5",
+      "mac": "Shift+f5"
+    },
+    {
+      "command": "codfsh.runAll",
+      "key": "f8",
+      "mac": "f8"
+    }]
   },
   "scripts": {
     "vscode:prepublish": "npm run package",
