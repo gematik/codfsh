@@ -26,7 +26,7 @@ export class DependencyController{
         });
         let generatedFolderPath = this.getGeneratedFolderPath(pathValues.ressourceFolderPath);
         result.push(`-ig ${generatedFolderPath}`);
-        
+
         return result;
     }
 
@@ -35,7 +35,12 @@ export class DependencyController{
             let dependencies = [];
             if(config?.dependencies) {
                 for (var file in config.dependencies) {
-                    dependencies.push(new Dependency(file,config.dependencies[file]));
+                    if(Object.prototype.toString.call(config.dependencies[file]) === '[object Object]') {
+                         dependencies.push(new Dependency(file,config.dependencies[file].version));
+                    }else{
+                         dependencies.push(new Dependency(file,config.dependencies[file]));
+                    }
+
                 }
             }
             else
