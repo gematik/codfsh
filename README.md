@@ -31,6 +31,15 @@ sudo npm install -g fsh-sushi
 sudo dotnet tool install --global firely.terminal
 ```
 
+### Install Extension from this Repo
+
+* Download latest codfsh-*.vsix file from https://github.com/gematik/codfsh/tree/main/package
+* run following command in a terminal
+
+```
+code --install-extension codfsh-*.vsix
+```
+
 The path of the Hapi Validator needs to be specified in the Settings of the extension.
 ## Extension Settings
 
@@ -38,10 +47,6 @@ To work properly the following settings need to be set:
 
 ![sushi Settings][sushiSettings]
 
-
-## Known Issues
-
-* path information in the settings must be absolute. Relative paths do not work at the moment,
 
 ## Release Notes
 
