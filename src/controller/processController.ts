@@ -50,7 +50,7 @@ export class ProcessController{
         if (!channel) {
             channel = vscode.window.createOutputChannel(channelName);
             this.outputChannels.push(channel);
-        } 
+        }
         channel.clear();
         channel.show();
         return channel;
@@ -60,10 +60,10 @@ export class ProcessController{
         const exec = require('child_process').exec;
         const logCommand = cmdOnly + ' ' + arg.join(' ');
         this.debugHandler.log("info", "Executing: '" + logCommand + "'");
-        let output = vscode.window.createOutputChannel(outputChannel);
-        output.clear();
-        output.appendLine(logCommand);
-        output.show();
+        let channel = this.prepareChannel(outputChannel);
+        channel.clear();
+        channel.appendLine(logCommand);
+        channel.show();
         return new Promise((resolve, reject) => {
             exec(logCommand, (error: any, stdout: string, stderr: string) => {
             if (error) {
@@ -72,7 +72,7 @@ export class ProcessController{
             if (stderr) {
                 this.debugHandler.log("error", stderr);
             }
-            output.append(stdout);
+            channel.append(stdout);
             resolve(stdout);
             });
         });
