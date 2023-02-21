@@ -70,6 +70,8 @@ firely.terminal will be used in the background to manage your `~/.fhir`-package 
 sudo dotnet tool install --global firely.terminal
 ```
 
+The path of the Hapi Validator needs to be specified in the Settings of the extension.
+
 ### Download Hapi Validator
 
 The HAPI FHIR validator is used via its command line interface. You ned to download the `.jar`-file, e.g. via
@@ -80,11 +82,12 @@ wget https://github.com/hapifhir/org.hl7.fhir.core/releases/latest/download/vali
 
 The path to the downloaded Hapi Validator jar-file needs to be specified in the settings of the extension.
 
-### Install Extension
-
+### Install Extension from this Repo
 Congrats! You are now done with all the requirements and have set up your codfsh-environment. We know this was a big issue. We currently work on major improvements, to automate as much of the steps as possible.
 
 Now you might want to install the `codfsh`-extension.
+* Download latest codfsh-x.y.z.vsix file from https://github.com/gematik/codfsh/tree/main/package
+* run following command in a terminal
 
 ```
 code --install-extension codfsh-x.y.z.vsix
@@ -96,10 +99,6 @@ To work properly the following settings need to be set:
 
 ![sushi Settings][sushiSettings]
 
-
-## Known Issues
-
-* path information in the settings must be absolute. Relative paths do not work at the moment,
 
 ## Release Notes
 
