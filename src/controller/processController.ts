@@ -30,7 +30,7 @@ export class ProcessController{
 
                 run.stderr.on('data', (data: any) => {
                     channel.appendLine(data);
-                    this.debugHandler.log("info" , data);
+                    this.debugHandler.log("info" , data, true);
                     stringoutput += data;
                 });
 
@@ -67,10 +67,10 @@ export class ProcessController{
         return new Promise((resolve, reject) => {
             exec(logCommand, (error: any, stdout: string, stderr: string) => {
             if (error) {
-                this.debugHandler.log("error", error);
+                this.debugHandler.log("error", error, true);
             }
             if (stderr) {
-                this.debugHandler.log("error", stderr);
+                this.debugHandler.log("error", stderr, true);
             }
             channel.append(stdout);
             resolve(stdout);

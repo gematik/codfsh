@@ -17,13 +17,19 @@ export class FileConnector{
     public identifyGeneratedRessources(currentfile: vscode.Uri, ressourcesFolder: string) : string[] {
         let resultfiles : string[] = [];
         if(this.isGeneratedFile(currentfile)){
-            this.debugHandler.log("info", "Found current active file is for Hapi Validation: '" + currentfile.fsPath + "'");
+            this.debugHandler.log("info", "Added current file for Hapi validation: '" + currentfile.fsPath + "'");
             resultfiles.push(join(currentfile.fsPath));
             return resultfiles;
         }
 
         let foundIds = this.searchForIdsInFile(currentfile.fsPath);
         let files =  this.searchGeneratedFileWithId(foundIds, ressourcesFolder);
+
+        if (resultfiles.length === 0){
+            files.push(currentfile.fsPath);
+            this.debugHandler.log("info", "Added current file for Hapi validation: '" + currentfile.fsPath + "'");
+        }
+        
         return files;
     }
 
@@ -41,10 +47,6 @@ export class FileConnector{
             });
 
         });
-        if (resultfiles.length === 0){
-            throw new Error("Unable to identify generated files from this file.");
-        }
-
         return resultfiles;
     }
 

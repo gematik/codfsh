@@ -6,9 +6,9 @@
   "publisher": "gematikde",
   "icon": "./images/icon.png",
   "repository": {
-		"type": "git",
-		"url": "https://github.com/HendrikGematik/codfsh"
-	},
+    "type": "git",
+    "url": "https://github.com/gematik/codfsh/"
+  },
   "engines": {
     "vscode": "^1.62.3"
   },
@@ -36,7 +36,7 @@
         },
         "codfsh.HapiValidator.Proxy.enabled": {
           "type": "boolean",
-          "default": true,
+          "default": false,
           "scope": "resource",
           "description": "Use proxy"
         },
@@ -69,21 +69,23 @@
         "title": "Run Sushi and Hapi on all Files"
       }
     ],
-    "keybindings": [{
-      "command": "codfsh.runSushi",
-      "key": "f5",
-      "mac": "f5"
-    },
-    {
-      "command": "codfsh.runHapi",
-      "key": "Shift+f5",
-      "mac": "Shift+f5"
-    },
-    {
-      "command": "codfsh.runAll",
-      "key": "f8",
-      "mac": "f8"
-    }]
+    "keybindings": [
+      {
+        "command": "codfsh.runSushi",
+        "key": "f5",
+        "mac": "f5"
+      },
+      {
+        "command": "codfsh.runHapi",
+        "key": "Shift+f5",
+        "mac": "Shift+f5"
+      },
+      {
+        "command": "codfsh.runAll",
+        "key": "f8",
+        "mac": "f8"
+      }
+    ]
   },
   "scripts": {
     "vscode:prepublish": "npm run package",
