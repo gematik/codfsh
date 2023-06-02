@@ -22,6 +22,11 @@ Execute sushi shorthand with `Run Sushi` command to get line based error or warn
 
 Execute Hapi Validator with `Run Hapi Validator` command to get line based error or warnings messages under the Problems tab in your terminal
 
+### Install missing FHIR Packages from your sushi-config.yaml
+![Dependency will be checked and installed ][dependencyImage]
+
+If you have Firely Terminal installed and a sushi-config.yaml file present in your current project, the necessary dependencies will be checked. If they are not present, they will be installed with a click.
+
 ## Requirements
 
 It is mandatory that sushi Shorthand and Hapi Validator are installed on the system. These two FHIR-Tools depend on other libs and tools. Please follow the steps underneath to set up your _codfsh_-environment.
@@ -102,3 +107,4 @@ To work properly the following settings need to be set:
 [runCommands]: https://github.com/gematik/codfsh/raw/main/images/runCommands.png
 [errorImage]: https://github.com/gematik/codfsh/raw/main/images/sushiErrors.png
 [sushiSettings]: https://github.com/gematik/codfsh/raw/main/images/settings.png
+[dependencyImage]: https://github.com/gematik/codfsh/raw/main/images/install_missing_dependencies.gif
