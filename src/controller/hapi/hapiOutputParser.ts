@@ -1,40 +1,57 @@
+/* eslint-disable @typescript-eslint/naming-convention */
 import { DiagnosticSeverity, Range } from "vscode";
 import { Diagnostic } from "../../models/diagnostic";
 import { ValidationResult } from "../../models/validationResult";
 import { DebugHandler } from "../debugHandler";
 
 export class HapiOutputParser{
-
-    debugHandler : DebugHandler;
-
-    constructor(debugHandler : DebugHandler){
-        this.debugHandler = debugHandler;
-    }
+    constructor(private debugHandler : DebugHandler){}
 
     public getValidationResults(logOutput: string, numberOfFiles: number): ValidationResult[]{
         const files = this.getFilesValidated(logOutput, numberOfFiles);
+        return files.map(validationResult => this.parseFile(validationResult));
+    }
 
-        let validationResults : ValidationResult[] = [];
-        files.forEach(validationResult => {
-            let diagnostics = this.parseFileDetails(validationResult.text, validationResult.file);
-            validationResult.setDiagnostics(diagnostics);
-            this.logFileDetails(validationResult);
-            validationResults.push(validationResult);
-        });
-        this.debugHandler.log("info", "Added diagnostics for " + validationResults.length + " file(s).");
-        return validationResults;
+    private parseFile(validationResult: ValidationResult): ValidationResult {
+        const diagnostics = this.parseFileDetails(validationResult.text, validationResult.file);
+        validationResult.setDiagnostics(diagnostics);
+        this.logFileDetails(validationResult);
+        return validationResult;
+    }
+
+    private countSeverity(severity: DiagnosticSeverity) {
+        switch (severity) {
+            case DiagnosticSeverity.Error:
+                return "Error";
+            case DiagnosticSeverity.Warning:
+                return "Warning";
+            case DiagnosticSeverity.Information:
+                return "Information";
+            default:
+                throw new Error(`Unsupported severity level: ${severity}`);
+        }
+    }
+    
+    private getSeverityCounts(validationResult: ValidationResult) {
+        const counts: Record<string, number> = { 
+            "Error": 0, 
+            "Warning": 0, 
+            "Information": 0 
+        };
+        validationResult.diagnostics.forEach(d => counts[this.countSeverity(d.severity)]++);
+        return counts;
     }
 
     private logFileDetails(validationResult: ValidationResult) {
-
-        let errors = this.getCountForSeverity(validationResult, DiagnosticSeverity.Error);
-        let warnings = this.getCountForSeverity(validationResult, DiagnosticSeverity.Warning);
-        let notes = this.getCountForSeverity(validationResult, DiagnosticSeverity.Information);
-        this.debugHandler.log("info", `Found ${validationResult.diagnostics.length} (${errors}|${warnings}|${notes}) diagnostics in file ${validationResult.file}`);
-    }
-
-    private getCountForSeverity(validationResult: ValidationResult, searchSeverity: DiagnosticSeverity) {
-        return validationResult.diagnostics.filter(d => d.severity === searchSeverity).length;
+        const severityCounts = this.getSeverityCounts(validationResult);
+        this.debugHandler.log(
+            "info", 
+            `Found ${validationResult.diagnostics.length} (` + 
+            `${severityCounts["Error"]}|` +
+            `${severityCounts["Warning"]}|` +
+            `${severityCounts["Information"]}) ` +
+            `diagnostics in file ${validationResult.file}`
+        );
     }
 
     getFilesValidated(logOutput: string, numberOfFiles: number) : ValidationResult[]{

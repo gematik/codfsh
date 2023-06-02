@@ -1,9 +1,3 @@
-export class PathValues{
-    sushiConfigPath : string;
-    ressourceFolderPath : string;
-
-    constructor(sushiConfigPath : string, ressourceFolderPath : string){
-        this.sushiConfigPath  = sushiConfigPath;
-        this.ressourceFolderPath  = ressourceFolderPath;
-    }
+export class PathValues {
+    constructor(public sushiConfigPath: string, public ressourceFolderPath: string) {}
 }

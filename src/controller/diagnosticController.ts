@@ -4,10 +4,9 @@ import { DiagnosticManipulator } from "./diagnosticManipulator";
 import { DebugHandler } from './debugHandler';
 
 export class DiagnosticController{
-
-    debugHandler : DebugHandler;
-    diagnosticManipulator : DiagnosticManipulator;
-    diagnosticCollection: vscode.DiagnosticCollection;
+    private debugHandler : DebugHandler;
+    private diagnosticManipulator : DiagnosticManipulator;
+    private diagnosticCollection: vscode.DiagnosticCollection;
 
     constructor(debugHandler : DebugHandler, diagnosticCollection: vscode.DiagnosticCollection) {
         this.debugHandler = debugHandler;
@@ -15,34 +14,32 @@ export class DiagnosticController{
         this.diagnosticManipulator = new DiagnosticManipulator();
     }
 
-    public addDiagnostics(diagnostics: Diagnostic[]) {
-        let distinctDiagnosticsPerFile = this.diagnosticManipulator.manipulate(diagnostics);
+    public addDiagnostics(diagnostics: Diagnostic[]): void {
+        const distinctDiagnosticsPerFile = this.diagnosticManipulator.manipulate(diagnostics);
         for (const file in distinctDiagnosticsPerFile) {
-            if (!this.checkFile(file, distinctDiagnosticsPerFile)){
-                break;
+            if (!this.fileExistsIn(file, distinctDiagnosticsPerFile)){
+                continue;
             }
-            let vsDiagnostics = this.map(distinctDiagnosticsPerFile, file);
-            this.add(file, vsDiagnostics);
+            const vsDiagnostics = this.mapDiagnostics(distinctDiagnosticsPerFile, file);
+            this.addToCollection(file, vsDiagnostics);
         }
     }
 
-    private checkFile(file: string, distinctDiagnosticsPerFile: { [x: string]: Diagnostic[]; hasOwnProperty?: any; }): boolean {
-        if (distinctDiagnosticsPerFile.hasOwnProperty(file)) {
-            console.log(`ERROR: distinctDiagnosticsPerFile kennt die File ${file} nicht!`);
-            return true;
+    private fileExistsIn(file: string, distinctDiagnosticsPerFile: Record<string, Diagnostic[]>): boolean {
+        if (!distinctDiagnosticsPerFile.hasOwnProperty(file)) {
+            this.debugHandler.log("error", `ERROR: distinctDiagnosticsPerFile does not know the file ${file}!`);
+            return false;
         }
-        return false;
+        return true;
     }
 
-    private map(myDiagnostics: { [key: string]: Diagnostic[]; }, file: string) {
-        let vsDiagnostics: Array<vscode.Diagnostic> = Array();
-        myDiagnostics[file].forEach(diagnostic => {
-            vsDiagnostics.push(new vscode.Diagnostic(diagnostic.range, diagnostic.message, diagnostic.severity));
-        });
-        return vsDiagnostics;
+    private mapDiagnostics(myDiagnostics: Record<string, Diagnostic[]>, file: string): vscode.Diagnostic[] {
+        return myDiagnostics[file].map(diagnostic => 
+            new vscode.Diagnostic(diagnostic.range, diagnostic.message, diagnostic.severity)
+        );
     }
 
-    private add(file: string, vsDiagnostics: vscode.Diagnostic[]) {
+    private addToCollection(file: string, vsDiagnostics: vscode.Diagnostic[]): void {
         this.diagnosticCollection.set(vscode.Uri.file(file), vsDiagnostics);
     }
 }

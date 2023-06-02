@@ -5,68 +5,63 @@ import { ProxySettings } from '../models/proxySettings';
 import { SushiSettings } from '../models/sushiSettings';
 import os = require('os');
 
-export class ConfigHandler{
-    debugHandler : DebugHandler;
+export class ConfigHandler {
+    debugHandler: DebugHandler;
 
-    constructor(debugHandler : DebugHandler){
+    constructor(debugHandler: DebugHandler) {
         this.debugHandler = debugHandler;
     }
 
-    private getActualConfiguration() : vscode.WorkspaceConfiguration {
+    private getActualConfiguration(): vscode.WorkspaceConfiguration {
         return vscode.workspace.getConfiguration('codfsh');
     }
 
     public getFilePathFromConfig(section: string): string {
         let config = this.getActualConfiguration();
-        let path =  config.get<string>(section);
-        return this.check(path,section);
+        let path = config.get<string>(section);
+        return this.resolveAndValidatePath(path, section);
     }
 
     public getSushiSettings(section: string): SushiSettings {
         let config = this.getActualConfiguration();
-        let buildSnapshots =  config.get<boolean>(section+'.BuildSnapshots');
-        buildSnapshots = this.isBoolSectionDefined(buildSnapshots, section+'.BuildSnapshots');
+        let buildSnapshots = config.get<boolean>(section + '.BuildSnapshots');
+        buildSnapshots = this.isSectionDefined(buildSnapshots, section + '.BuildSnapshots');
         return new SushiSettings(buildSnapshots);
     }
 
-    public getProxySettings(section: string) : ProxySettings {
+    public getProxySettings(section: string): ProxySettings {
         let config = this.getActualConfiguration();
-        let active =  config.get<boolean>(section+'.enabled');
-        let address =  config.get<string>(section+'.ipAddress');
-        active = this.isBoolSectionDefined(active, section+'.enabled');
-        address = this.isStringSectionDefined(address, section+'.ipAddress');
-        return new ProxySettings(active,address);
+        let active = config.get<boolean>(section + '.enabled');
+        let address = config.get<string>(section + '.ipAddress');
+        active = this.isSectionDefined(active, section + '.enabled');
+        address = this.isSectionDefined(address, section + '.ipAddress');
+        return new ProxySettings(active, address);
     }
 
-    private check(path: string | undefined, section: string) : string {
+    private resolveAndValidatePath(path: string | undefined, section: string): string {
         if (path) {
-            if (path.startsWith('~/')) {
-                path = os.homedir() + path.substring(1);
-            }
+            path = this.resolveHomeDir(path);
+            path = this.isSectionDefined(path, section);
     
-            path = this.isStringSectionDefined(path, section);
             if (!fs.existsSync(path)) {
-                let error = "Specified " + section + " defined in the settings is incorrect. Path '" + path + "' does not exist.";
-                this.debugHandler.log("error", error, true);
-                throw new Error(error);
+                this.debugHandler.log("error","Specified " + section + " defined in the settings is incorrect. Path '" + path + "' does not exist.", true);
             }
+            return path;
         } else {
-            let error = "Path is undefined for " + section;
-            this.debugHandler.log("error", error, true);
-            throw new Error(error);
+            this.debugHandler.log("error","Path is undefined for " + section, true);
+        }
+        throw new Error(`Unexpected error resolving path for ${section}`);
+    }
+    
+
+    private resolveHomeDir(path: string): string {
+        if (path.startsWith('~/')) {
+            path = os.homedir() + path.substring(1);
         }
         return path;
     }
-    
 
-    private isStringSectionDefined(result: string | undefined, section: string) : string {
-        if (result === undefined) {
-            throw new Error(section + " is not defined in the settings of this extenion.");
-        }
-        return result;
-    }
-
-    private isBoolSectionDefined(result: boolean | undefined, section: string) : boolean {
+    private isSectionDefined<T>(result: T | undefined, section: string): T {
         if (result === undefined) {
             throw new Error(section + " is not defined in the settings of this extenion.");
         }

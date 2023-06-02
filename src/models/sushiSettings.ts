@@ -1,8 +1,3 @@
-export class SushiSettings{
-    generateSnapshots : boolean;
-
-    constructor(generateSnapshots : boolean){
-        this.generateSnapshots = generateSnapshots;
-    }
-
+export class SushiSettings {
+    constructor(public generateSnapshots: boolean) {}
 }

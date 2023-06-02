@@ -17,7 +17,6 @@ export class HapiWrapper{
   }
 
     public async getConsoleOutput(filesToValidate: string[], dependencies: string[])  : Promise<string>  {
-        //TODO: Check validator available, if not ask to download?!
         return new Promise(async (resolve, reject) => {
             const validatorDestination = this.configHandler.getFilePathFromConfig("HapiValidator.Executable");
 
@@ -36,15 +35,10 @@ export class HapiWrapper{
                  args.push(file);
             });
 
-            let output = await this.processController.execShellCommandOld('java -jar',args, "Hapi");
+            let output = await this.processController.execShellCommandAsync('java -jar',args, "codfsh: Hapi");
             this.debugHandler.log("info","received output");
             resolve(output);
         });
-    }
-
-    public download() {
-        throw new Error('Method not implemented.');
-        //wget https://github.com/hapifhir/org.hl7.fhir.core/releases/download/5.6.89/validator_cli.jar -O ~\.fhir\validators\validator_cli_v5.6.89.jar
     }
 
     private formatProxySettings() : string {

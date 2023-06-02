@@ -11,41 +11,30 @@ import { PathController } from '../pathController';
 import { DebugHandler } from '../debugHandler';
 import { DependencyController } from '../dependencyController';
 import { PathValues } from '../../models/pathValues';
-import { FileHander } from '../fileHandler';
+import { FileHandler } from '../fileHandler';
 
-export class HapiController{
-    debugHandler : DebugHandler;
-    dependencyController: DependencyController;
-    hapiWrapper : HapiWrapper;
-    diagnosticController : DiagnosticController;
-    hapiOutputParser : HapiOutputParser;
-    configHandler: ConfigHandler;
-    pathController: PathController;
-    fileConnector: FileConnector;
-    errorHandler: ErrorHandler;
-    notificationController: NotificationController;
-    fileHandler: FileHander;
-
-    constructor(debugHandler : DebugHandler, diagnosticCollection: vscode.DiagnosticCollection){
-        this.debugHandler = debugHandler;
-        this.diagnosticController = new DiagnosticController(this.debugHandler, diagnosticCollection);
-        this.configHandler = new ConfigHandler(this.debugHandler);
-        this.fileHandler = new FileHander(this.debugHandler);
-        this.pathController = new PathController(this.debugHandler);
-        this.dependencyController = new DependencyController(this.debugHandler, this.pathController);
-        this.hapiWrapper = new HapiWrapper(this.debugHandler, this.configHandler);
-        this.hapiOutputParser = new HapiOutputParser(this.debugHandler);
-        this.fileConnector = new FileConnector(this.debugHandler);
-        this.errorHandler = new ErrorHandler(this.debugHandler);
-        this.notificationController = new NotificationController(this.debugHandler);
-    }
+export class HapiController {
+    constructor(
+        private debugHandler : DebugHandler,
+        diagnosticCollection: vscode.DiagnosticCollection,
+        private diagnosticController = new DiagnosticController(debugHandler, diagnosticCollection),
+        private configHandler = new ConfigHandler(debugHandler),
+        private fileHandler = new FileHandler(debugHandler),
+        private pathController = new PathController(debugHandler),
+        private dependencyController = new DependencyController(debugHandler, pathController),
+        private hapiWrapper = new HapiWrapper(debugHandler, configHandler),
+        private hapiOutputParser = new HapiOutputParser(debugHandler),
+        private fileConnector = new FileConnector(debugHandler),
+        private errorHandler = new ErrorHandler(debugHandler),
+        private notificationController = new NotificationController(debugHandler)
+    ) {}
 
     public async executeForCurrentFile() {
         try {
             var currentFileUri = vscode.window.activeTextEditor?.document.uri;
             if (currentFileUri) {
                 const pathValues =  await this.pathController.getPathVariables();
-                let filesForValidation = this.fileConnector.identifyGeneratedRessources(currentFileUri ,pathValues.ressourceFolderPath);
+                let filesForValidation = this.fileConnector.identifyGeneratedResources(currentFileUri ,pathValues.ressourceFolderPath);
                 this.validate(pathValues, filesForValidation);
             }
         } catch (e: any) {
