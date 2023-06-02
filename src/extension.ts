@@ -35,10 +35,9 @@ export function activate(context: vscode.ExtensionContext) {
 	}
 	catch(e:any){
 		if (typeof e === "string") {
-			debugHandler.log("error",e);
+			debugHandler.log("error",e, true);
 		} else if (e instanceof Error) {
-			debugHandler.log("error",e.message);
-			vscode.window.showErrorMessage(e.message);
+			debugHandler.log("error",e.message, true);
 		}
 
 	}

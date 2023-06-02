@@ -23,7 +23,7 @@ export class HapiWrapper{
 
             let args = [];
             args.push(validatorDestination);
-            args.push(`-version 4.0.1`);
+            //args.push(`-version 4.0.1`);
             args.push(`-jurisdiction DE`);
             args.push(`-locale de-DE`);
             args.push(`-tx n/a`);

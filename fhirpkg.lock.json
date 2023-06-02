@@ -1,0 +1,10 @@
+{
+  "updated": "2023-06-02T13:35:10.833909+02:00",
+  "dependencies": {
+    "de.gematik.fhir.atf": "1.0.0",
+    "hl7.fhir.r4.core": "4.0.1"
+  },
+  "missing": {
+    "js-yaml": "^4.1.0"
+  }
+}
