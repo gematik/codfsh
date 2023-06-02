@@ -4,9 +4,9 @@ import { NotificationController } from "./notificationController";
 import { ProcessController } from "./processController";
 
 export class DependencyEnsurer{
-    debugHandler: DebugHandler;
-    processController : ProcessController;
-    notificationController: NotificationController;
+    private debugHandler: DebugHandler;
+    private processController : ProcessController;
+    private notificationController: NotificationController;
 
     constructor(debugHandler: DebugHandler, processController : ProcessController){
         this.debugHandler = debugHandler;
@@ -14,17 +14,15 @@ export class DependencyEnsurer{
         this.processController = processController;
     }
 
-    public async installMissingDependencies(dependencies: Dependency[]){
-        let installedDependencies = await this.getInstalledDependencies();
+    public async installMissingDependencies(dependencies: Dependency[]): Promise<void>{
+        const installedDependencies = await this.getInstalledDependencies();
         for (const dependency of dependencies) {
-            if (installedDependencies.filter(i => i.name === dependency.name && i.version === dependency.version)){
+            if (installedDependencies.find(i => i.name === dependency.name && i.version === dependency.version)){
                 this.debugHandler.log("info", `Package '${dependency.name}#${dependency.version}' already installed`);
-            }
-            else
-            {
+            } else {
                 if (await this.notificationController.surveyInstallMissingDependency(dependency)){
                     this.debugHandler.log("info", `Installing missing FHIR Package ${dependency.name}#${dependency.version}`, true);
-                    let output = await this.installDependency(dependency);
+                    const output = await this.installDependency(dependency);
                     this.debugHandler.log("info", output);
                 }
             }
@@ -32,50 +30,46 @@ export class DependencyEnsurer{
     }
 
     private async installDependency(dependency: Dependency) : Promise<string>{
-        return new Promise(async (resolve, reject) => {
-            try {
-                this.debugHandler.log("info", `Started installation of package '${dependency.name}#${dependency.version}'`);
-                const output = await this.processController.execShellCommandAsync("fhir", ['install', dependency.name, dependency.version], "Firely Terminal");
-                this.debugHandler.log("info", `Installation of package '${dependency.name}#${dependency.version}' finished!`);
-                resolve(output);
-            }
-            catch (e: any) {
-                this.debugHandler.log("error", e);
-                reject(e);
-            }
-        });
+        try {
+            this.debugHandler.log("info", `Started installation of package '${dependency.name}#${dependency.version}'`);
+            const output = await this.processController.execShellCommandAsync("fhir", ['install', dependency.name, dependency.version], "Firely Terminal");
+            this.debugHandler.log("info", `Installation of package '${dependency.name}#${dependency.version}' finished!`);
+            return output;
+        } catch (e: any) {
+            this.debugHandler.log("error", e.message);
+            throw e;
+        }
     }
 
     private async getInstalledDependencies() : Promise<Dependency[]> {
-        return new Promise(async (resolve, reject) => {
-            try {
-                const output = await this.processController.execShellCommandAsync("fhir", ['cache'], "Firely Terminal");
-                const dependencies = this.parseInstalledDependencies(output);
-                resolve(dependencies);
-            }
-            catch (e: any) {
-                this.debugHandler.log("error", e);
-                reject(e);
-            }
-        });
+        try {
+            const output = await this.processController.execShellCommandAsync("fhir", ['cache'], "Firely Terminal");
+            return this.parseInstalledDependencies(output);
+        } catch (e: any) {
+            this.debugHandler.log("error", e.message);
+            throw e;
+        }
     }
 
     private parseInstalledDependencies(output: string): Dependency[] {
         const regex = /(?<package>.+?)@(?<version>.*)/gm;
-        let m;
-        let dependencies = [] ;
-        while ((m = regex.exec(output)) !== null) {
-            if (m.index === regex.lastIndex) {
+        let match: RegExpExecArray | null;
+        const dependencies: Dependency[] = [] ;
+
+        while ((match = regex.exec(output)) !== null) {
+            if (match.index === regex.lastIndex) {
                 regex.lastIndex++;
             }
 
-            if (m.groups?.package) {
-                let dependency = new Dependency(m.groups?.package, m.groups?.version);
+            const packageName = match.groups?.package;
+            const version = match.groups?.version;
+
+            if (packageName && version) {
+                const dependency = new Dependency(packageName, version);
                 dependencies.push(dependency);
             }
-
         }
+
         return dependencies;
     }
-
 }

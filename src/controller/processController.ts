@@ -1,52 +1,53 @@
 import * as vscode from 'vscode';
-import { spawn } from 'node:child_process';
+import { spawn } from 'child_process';
 import { DebugHandler } from './debugHandler';
-export class ProcessController{
 
-    debugHandler : DebugHandler;
-    outputChannels : vscode.OutputChannel[];
+export class ProcessController {
+    debugHandler: DebugHandler;
+    outputChannels: vscode.OutputChannel[];
 
-    constructor(debugHandler : DebugHandler){
+    constructor(debugHandler: DebugHandler) {
         this.debugHandler = debugHandler;
         this.outputChannels = [];
     }
 
-    public execShellCommandAsync(cmd: string, arg:string[], outputChannel: string) : Promise<string>{
+    public execShellCommandAsync(cmd: string, args: string[], outputChannel: string): Promise<string> {
         return new Promise((resolve, reject) => {
             try {
-                let logCommand = cmd + ' ' + arg.join(' ');
+                const logCommand = `${cmd} ${args.join(' ')}`;
+                const channel = this.prepareChannel(outputChannel);
+                let stringOutput = "";
 
-                let channel = this.prepareChannel(outputChannel);
-                let stringoutput = "";
-
-                this.debugHandler.log("info", "Executing: '" + logCommand + "'");
+                this.debugHandler.log("info", `Executing: '${logCommand}'`);
                 channel.appendLine(logCommand);
 
-                const run = spawn(cmd,arg);
-                run.stdout.on('data', (data: any) => {
-                    channel.appendLine(data);
-                    stringoutput += data;
+                const run = spawn(cmd, args);
+                run.stdout.on('data', (data: Buffer) => {
+                    const output = data.toString();
+                    channel.appendLine(output);
+                    stringOutput += output;
                 });
 
-                run.stderr.on('data', (data: any) => {
-                    channel.appendLine(data);
-                    this.debugHandler.log("info" , data, true);
-                    stringoutput += data;
+                run.stderr.on('data', (data: Buffer) => {
+                    const error = data.toString();
+                    channel.appendLine(error);
+                    this.debugHandler.log("info", error, true);
+                    stringOutput += error;
                 });
 
-                run.on('close', function (code:any) {
+                run.on('close', (code: number) => {
                     channel.appendLine(`child process exited with code ${code}`);
-                    resolve(stringoutput);
+                    resolve(stringOutput);
                 });
-            } catch (e : any) {
-                reject(e);
-                this.debugHandler.log("error" , e);
+            } catch (error: any) {
+                reject(error);
+                this.debugHandler.log("error", error);
             }
         });
     }
 
-    private prepareChannel(channelName: string) {
-        let channel = this.outputChannels.filter(c => c.name === channelName)[0];
+    private prepareChannel(channelName: string): vscode.OutputChannel {
+        let channel = this.outputChannels.find(c => c.name === channelName);
         if (!channel) {
             channel = vscode.window.createOutputChannel(channelName);
             this.outputChannels.push(channel);
@@ -56,9 +57,9 @@ export class ProcessController{
         return channel;
     }
 
-    public execShellCommandOld(cmdOnly: string, arg:string[], outputChannel: string) : Promise<string>{
+    public execShellCommandOld(cmdOnly: string, args: string[], outputChannel: string): Promise<string> {
         const exec = require('child_process').exec;
-        const logCommand = cmdOnly + ' ' + arg.join(' ');
+        const logCommand = cmdOnly + ' ' + args.join(' ');
         this.debugHandler.log("info", "Executing: '" + logCommand + "'");
         let channel = this.prepareChannel(outputChannel);
         channel.clear();
@@ -66,14 +67,14 @@ export class ProcessController{
         channel.show();
         return new Promise((resolve, reject) => {
             exec(logCommand, (error: any, stdout: string, stderr: string) => {
-            if (error) {
-                this.debugHandler.log("error", error, true);
-            }
-            if (stderr) {
-                this.debugHandler.log("error", stderr, true);
-            }
-            channel.append(stdout);
-            resolve(stdout);
+                if (error) {
+                    this.debugHandler.log("error", error, true);
+                }
+                if (stderr) {
+                    this.debugHandler.log("error", stderr, true);
+                }
+                channel.append(stdout);
+                resolve(stdout);
             });
         });
     }

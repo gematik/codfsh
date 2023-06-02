@@ -5,13 +5,11 @@ import { SushiOutputParser } from './sushiOutputParser';
 import path = require("path");
 import { DebugHandler } from '../debugHandler';
 import { PathController } from '../pathController';
-import { PathValues } from '../../models/pathValues';
 import { Diagnostic } from '../../models/diagnostic';
 import { ConfigHandler } from '../configHandler';
 import { DependencyEnsurer } from '../dependencyEnsurer';
 import { ProcessController } from '../processController';
 import { DependencyController } from '../dependencyController';
-import { FileHander } from '../fileHandler';
 
 export class SushiController{
     debugHandler : DebugHandler;

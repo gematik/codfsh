@@ -1,34 +1,28 @@
 import { Diagnostic } from "../models/diagnostic";
 
-export class DiagnosticManipulator{
-
-    public manipulate(diagnostics: Diagnostic[]) : {[key: string]: Diagnostic[]} {
-        let distinctDiagnostics = this.filterToDistinctErrorMessages(diagnostics);
-        let distinctDiagnosticsPerFile = this.groupOutputByFile(distinctDiagnostics);
+export class DiagnosticManipulator {
+    public manipulate(diagnostics: Diagnostic[]): Record<string, Diagnostic[]> {
+        const distinctDiagnostics = this.filterDistinctErrorMessages(diagnostics);
+        const distinctDiagnosticsPerFile = this.groupByFile(distinctDiagnostics);
         return distinctDiagnosticsPerFile;
     }
 
-    private filterToDistinctErrorMessages(diagnistics: Diagnostic[]) : Diagnostic[] {
-        const isPropValuesEqual = (subject: { [x: string]: any; }, target: { [x: string]: any; }, propNames: any[]) =>
-        propNames.every(propName => subject[propName] === target[propName]);
+    private filterDistinctErrorMessages(diagnostics: Diagnostic[]): Diagnostic[] {
+        const isPropertyValuesEqual = (subject: Diagnostic, target: Diagnostic, propNames: (keyof Diagnostic)[]): boolean =>
+            propNames.every(propName => propName in subject && propName in target && subject[propName] === target[propName]);
 
-        const getUniqueItemsByProperties = (items: any[], propNames: any[]) =>
-        items.filter((item, index, array) =>
-          index === array.findIndex(foundItem => isPropValuesEqual(foundItem, item, propNames))
-        );
+        const getUniqueItemsByProperties = (items: Diagnostic[], propNames: (keyof Diagnostic)[]): Diagnostic[] =>
+            items.filter((item, index, array) =>
+                index === array.findIndex(foundItem => isPropertyValuesEqual(foundItem, item, propNames))
+            );
 
-        return getUniqueItemsByProperties(diagnistics,['file', 'message', 'severity', 'lineFrom', 'lineTo']);
+        return getUniqueItemsByProperties(diagnostics, ['file', 'message', 'severity', 'lineFrom', 'lineTo']);
     }
 
-    private groupOutputByFile(diagnostics : Diagnostic[]) : {[key: string]: Diagnostic[]} {
-        var groupBy = function(xs: any[], key: string | number) : {[key: string]: Diagnostic[]} {
-            return xs.reduce(function(rv, x) {
-              (rv[x[key]] = rv[x[key]] || []).push(x);
-              return rv;
-            }, {});
-          };
-          let groupedResult =  groupBy(diagnostics, 'file');
-          console.log(groupedResult)
-          return groupedResult;
+    private groupByFile(diagnostics: Diagnostic[]): Record<string, Diagnostic[]> {
+        return diagnostics.reduce((grouped, diagnostic) => {
+            (grouped[diagnostic.file] = grouped[diagnostic.file] || []).push(diagnostic);
+            return grouped;
+        }, {} as Record<string, Diagnostic[]>);
     }
 }

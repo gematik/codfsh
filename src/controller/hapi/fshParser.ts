@@ -1,19 +1,15 @@
-export class FshParser{
-    public getIdsFromFshFile(fshContent: string) : string[] {
-
+export class FshParser {
+    public getIdsFromFshFile(fshContent: string): string[] {
         const regex = /(I|i)d\s*(:|=)\s*"*(?<id>.*)"*/gm;
-        let m;
-        let output : string[] = [] ;
+        const output: string[] = [];
 
-        while ((m = regex.exec(fshContent)) !== null) {
-            if (m.index === regex.lastIndex) {
-                regex.lastIndex++;
-            }
-            if(m.groups){
-                output.push(m.groups.id);
+        let match: RegExpExecArray | null;
+        while ((match = regex.exec(fshContent)) !== null) {
+            if (match.groups?.id) {
+                output.push(match.groups.id);
             }
         }
-        return output;
 
+        return output;
     }
 }
