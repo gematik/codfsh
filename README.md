@@ -98,3 +98,7 @@ code --install-extension codfsh-x.y.z.vsix
 To work properly the following settings need to be set:
 
 ![sushi Settings][sushiSettings]
+
+[runCommands]: https://github.com/HendrikGematik/codfsh/raw/main/images/runCommands.png
+[errorImage]: https://github.com/HendrikGematik/codfsh/blob/main/images/sushiErrors.png
+[sushiSettings]: https://github.com/HendrikGematik/codfsh/raw/main/images/settings.png
