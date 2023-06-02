@@ -37,7 +37,7 @@ export class SushiWrapper {
         const ressourceFolderPathPosix = ressourceFolderPath.split(path.sep).join(path.posix.sep);
         args.push(ressourceFolderPathPosix);
         this.handleSushieSettings(sushiSettings, args);
-        let output = await this.processController.execShellCommandAsync("sushi", args, "Sushi");
+        let output = await this.processController.execShellCommandAsync("sushi", args, "codfsh: Sushi");
         return output;
     }
 

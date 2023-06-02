@@ -35,7 +35,7 @@ export class HapiWrapper{
                  args.push(file);
             });
 
-            let output = await this.processController.execShellCommandOld('java -jar',args, "Hapi");
+            let output = await this.processController.execShellCommandAsync('java -jar',args, "codfsh: Hapi");
             this.debugHandler.log("info","received output");
             resolve(output);
         });

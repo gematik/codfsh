@@ -101,7 +101,7 @@ class SushiWrapper {
         const ressourceFolderPathPosix = ressourceFolderPath.split(path.sep).join(path.posix.sep);
         args.push(ressourceFolderPathPosix);
         this.handleSushieSettings(sushiSettings, args);
-        let output = await this.processController.execShellCommandAsync("sushi", args, "Sushi");
+        let output = await this.processController.execShellCommandAsync("sushi", args, "codfsh: Sushi");
         return output;
     }
     handleSushieSettings(sushiSettings, args) {
@@ -488,7 +488,7 @@ class DependencyEnsurer {
     async installDependency(dependency) {
         try {
             this.debugHandler.log("info", `Started installation of package '${dependency.name}#${dependency.version}'`);
-            const output = await this.processController.execShellCommandAsync("fhir", ['install', dependency.name, dependency.version], "Firely Terminal");
+            const output = await this.processController.execShellCommandAsync("fhir", ['install', dependency.name, dependency.version], "codfsh: Firely Terminal");
             this.debugHandler.log("info", `Installation of package '${dependency.name}#${dependency.version}' finished!`);
             return output;
         }
@@ -499,7 +499,7 @@ class DependencyEnsurer {
     }
     async getInstalledDependencies() {
         try {
-            const output = await this.processController.execShellCommandAsync("fhir", ['cache'], "Firely Terminal");
+            const output = await this.processController.execShellCommandAsync("fhir", ['cache'], "codfsh: Firely Terminal");
             return this.parseInstalledDependencies(output);
         }
         catch (e) {
@@ -4883,7 +4883,7 @@ class HapiWrapper {
             filesToValidate.forEach((file) => {
                 args.push(file);
             });
-            let output = await this.processController.execShellCommandOld('java -jar', args, "Hapi");
+            let output = await this.processController.execShellCommandAsync('java -jar', args, "codfsh: Hapi");
             this.debugHandler.log("info", "received output");
             resolve(output);
         });
@@ -5206,7 +5206,7 @@ exports.DebugHandler = void 0;
 const vscode = __webpack_require__(1);
 class DebugHandler {
     constructor() {
-        this.output = vscode.window.createOutputChannel("codfsh debug");
+        this.output = vscode.window.createOutputChannel("codfsh: Info");
         this.output.clear();
     }
     log(severity, message, escalateToUser = false) {

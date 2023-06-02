@@ -32,7 +32,7 @@ export class DependencyEnsurer{
     private async installDependency(dependency: Dependency) : Promise<string>{
         try {
             this.debugHandler.log("info", `Started installation of package '${dependency.name}#${dependency.version}'`);
-            const output = await this.processController.execShellCommandAsync("fhir", ['install', dependency.name, dependency.version], "Firely Terminal");
+            const output = await this.processController.execShellCommandAsync("fhir", ['install', dependency.name, dependency.version], "codfsh: Firely Terminal");
             this.debugHandler.log("info", `Installation of package '${dependency.name}#${dependency.version}' finished!`);
             return output;
         } catch (e: any) {
@@ -43,7 +43,7 @@ export class DependencyEnsurer{
 
     private async getInstalledDependencies() : Promise<Dependency[]> {
         try {
-            const output = await this.processController.execShellCommandAsync("fhir", ['cache'], "Firely Terminal");
+            const output = await this.processController.execShellCommandAsync("fhir", ['cache'], "codfsh: Firely Terminal");
             return this.parseInstalledDependencies(output);
         } catch (e: any) {
             this.debugHandler.log("error", e.message);

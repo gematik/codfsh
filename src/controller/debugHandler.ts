@@ -4,7 +4,7 @@ export class DebugHandler {
     private output: vscode.OutputChannel;
 
     constructor() {
-        this.output = vscode.window.createOutputChannel("codfsh debug");
+        this.output = vscode.window.createOutputChannel("codfsh: Info");
         this.output.clear();
     }
 
