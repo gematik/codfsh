@@ -17,9 +17,10 @@ export class DependencyEnsurer{
     public async installMissingDependencies(dependencies: Dependency[]): Promise<void>{
         const installedDependencies = await this.getInstalledDependencies();
         for (const dependency of dependencies) {
-            if (installedDependencies.find(i => i.name === dependency.name && i.version === dependency.version)){
+            if (installedDependencies.find(i => i.name.toLowerCase() === dependency.name.toLowerCase() && i.version === dependency.version)){
                 this.debugHandler.log("info", `Package '${dependency.name}#${dependency.version}' already installed`);
-            } else {
+            }
+            else {
                 if (await this.notificationController.surveyInstallMissingDependency(dependency)){
                     this.debugHandler.log("info", `Installing missing FHIR Package ${dependency.name}#${dependency.version}`, true);
                     const output = await this.installDependency(dependency);
