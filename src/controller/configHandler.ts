@@ -1,9 +1,9 @@
 import * as vscode from 'vscode';
 import { DebugHandler } from './debugHandler';
 import * as fs from 'fs';
-import { ProxySettings } from '../models/proxySettings';
 import { SushiSettings } from '../models/sushiSettings';
 import os = require('os');
+import * as yaml from 'js-yaml';
 
 export class ConfigHandler {
     debugHandler: DebugHandler;
@@ -29,14 +29,57 @@ export class ConfigHandler {
         return new SushiSettings(buildSnapshots);
     }
 
-    public getProxySettings(section: string): ProxySettings {
+    public getHapiParameters(section: string): any {
+        // Get settings from yaml file
+        let settingsFileParameters = this.getParametersFromSettingsFile(section + '.SettingsFile');
+    
+        // Get additional parameters from configuration
         let config = this.getActualConfiguration();
-        let active = config.get<boolean>(section + '.enabled');
-        let address = config.get<string>(section + '.ipAddress');
-        active = this.isSectionDefined(active, section + '.enabled');
-        address = this.isSectionDefined(address, section + '.ipAddress');
-        return new ProxySettings(active, address);
+        let additionalParameter = config.get<string>(section + '.AdditionalParameters');
+    
+        // Create an object with the additional parameter
+        let additionalParametersObj: { [key: string]: string | boolean } = {};
+        if (additionalParameter) {
+            let splitParameters = additionalParameter.split(' ');
+            for (let i = 0; i < splitParameters.length; i++) {
+                // If parameter starts with '-', it's a key
+                if (splitParameters[i].startsWith('-')) {
+                    let key = splitParameters[i].substring(1);
+                    // If next parameter also starts with '-', or does not exist, set current key to true
+                    if (i + 1 === splitParameters.length || splitParameters[i + 1].startsWith('-')) {
+                        additionalParametersObj[key] = true;
+                    } else {
+                        // Else set it to the next parameter (its value)
+                        additionalParametersObj[key] = splitParameters[i + 1];
+                        i++; // Skip next parameter since it's used as value
+                    }
+                }
+            }
+        }
+        
+    
+        // Merge parameters with the additionalParameter being given preference
+        return {...settingsFileParameters, ...additionalParametersObj};
     }
+
+    public getParametersFromSettingsFile(section: string): any {
+        let config = this.getActualConfiguration();
+        let filePath = config.get<string>(section);
+        if(filePath) {
+            try {
+                let fileContents = fs.readFileSync(filePath, 'utf8');
+                let data: any = yaml.load(fileContents);
+                return data.hapi_parameters;
+            } catch (e) {
+                this.debugHandler.log("error",`Error reading or parsing YAML file from '${filePath}'`);
+                return {};
+            }
+        } else { 
+            this.debugHandler.log("info",`The location of an optional YAML file for reading additional parameters is not set in the settings of the extension under '${section}'`);
+            return {};
+        }
+    }
+    
 
     private resolveAndValidatePath(path: string | undefined, section: string): string {
         if (path) {
