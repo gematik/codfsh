@@ -41,11 +41,15 @@ export class PathController {
         return sushiConfigPath.replace("sushi-config.yaml", "");
     }
 
-    private async getFiles(dir: string): Promise<string[]> {
+    private async getFiles(dir: string, depth: number = 0): Promise<string[]> {
+        if (depth > 2) {
+            return [];
+        }
+
         const dirents = await readdir(dir, { withFileTypes: true });
         const files = await Promise.all(dirents.map(async dirent => {
             const res = resolve(dir, dirent.name);
-            return dirent.isDirectory() ? this.getFiles(res) : res;
+            return dirent.isDirectory() ? this.getFiles(res, depth + 1) : res;
         }));
         return files.flat();
     }
