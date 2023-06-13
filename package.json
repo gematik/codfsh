@@ -2,7 +2,7 @@
   "name": "codfsh",
   "displayName": "codfsh",
   "description": "Wrapper for SUSHI Shorthand and Hapi Validator to provide propper warning and error messages in VS ",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "publisher": "gematikde",
   "icon": "./images/icon.png",
   "repository": {
