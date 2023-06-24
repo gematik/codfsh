@@ -66,7 +66,6 @@ export class HapiController {
         var validationResults = this.hapiOutputParser.getValidationResults(consoleOutput, numberOfFiles);
         validationResults.forEach((result : ValidationResult) => {
             this.diagnosticController.addDiagnostics(result.diagnostics);
-            this.notificationController.notifyCompleted(result.file + " " + result.summary);
         });
     }
 }
