@@ -4570,6 +4570,9 @@ class DependencyEnsurer {
     async installMissingDependencies(dependencies) {
         const installedDependencies = await this.getInstalledDependencies();
         for (const dependency of dependencies) {
+            if (this.isInterversionPackage(dependency.name)) {
+                continue;
+            }
             if (installedDependencies.find(i => i.name.toLowerCase() === dependency.name.toLowerCase() && i.version === dependency.version)) {
                 this.debugHandler.log("info", `Package '${dependency.name}#${dependency.version}' already installed`);
             }
@@ -4620,6 +4623,9 @@ class DependencyEnsurer {
             }
         }
         return dependencies;
+    }
+    isInterversionPackage(dependencyName) {
+        return dependencyName.startsWith('hl7.fhir.extensions.r');
     }
 }
 exports.DependencyEnsurer = DependencyEnsurer;
