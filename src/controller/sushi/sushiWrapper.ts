@@ -34,7 +34,7 @@ export class SushiWrapper {
 
     private async runSushi(ressourceFolderPath: string, sushiSettings: SushiSettings) {
         let args: string[] = [];
-        const ressourceFolderPathPosix = ressourceFolderPath.split(path.sep).join(path.posix.sep);
+        const ressourceFolderPathPosix = `"${ressourceFolderPath.split(path.sep).join(path.posix.sep)}"`;
         args.push(ressourceFolderPathPosix);
         this.handleSushieSettings(sushiSettings, args);
         let output = await this.processController.execShellCommandAsync("sushi", args, "codfsh: Sushi");
