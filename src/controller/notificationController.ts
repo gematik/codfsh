@@ -16,16 +16,6 @@ export class NotificationController {
         });
     }
 
-    public notifyCompleted(fileToValidate: string) {
-        vscode.window.showInformationMessage("Hapi completed for '" + path.basename(fileToValidate) + "'.", 'Open').then(selection => {
-            if (selection === 'Open') {
-                vscode.workspace.openTextDocument(fileToValidate).then(doc => {
-                    vscode.window.showTextDocument(doc);
-                });
-            }
-        });
-    }
-
     public surveyInstallMissingDependency(missingDependencies: Dependency): Promise<boolean> {
         return new Promise<boolean>((resolve, reject) => {
             try {
