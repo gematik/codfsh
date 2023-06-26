@@ -36,7 +36,9 @@ export class DependencyController {
             return [];
         }
     
-        return Object.entries(config.dependencies).map(([file, dep]) => {
+        return Object.entries(config.dependencies)
+        .filter(([file, dep]) => !file.startsWith('hl7.fhir.extensions.r'))
+        .map(([file, dep]) => {
             const version = typeof dep === 'object' && dep !== null && 'version' in dep ? dep.version : dep;
             return new Dependency(file, String(version));
         });
