@@ -94,29 +94,47 @@ To work properly the following settings need to be set:
 
 ![Settings][settings]
 
-### Configuring Additional Parameters for HAPI Validator
+### Configuring Additional Parameters
 
-The extension supports additional parameter configuration for HAPI Validator. These parameters influence the behavior of the validation process. You can set these parameters in two ways:
+The extension supports additional parameter configuration for HAPI Validator. These parameters influence the behavior of the validation process. You can set these parameters in three ways:
 
-1. **Via the settings file:** The settings file is specified in your configuration under the `codfsh.HapiValidator.Settings.SettingsFile` key. The parameters should be specified under the `hapi_parameters` section in this YAML file. Each parameter should be a key-value pair. If a parameter doesn't require a value, you can set it as `true`. Here is an example:
+1. **Via a global settings file:** The settings file is specified in your configuration under the `codfsh.Settings.SettingsFile` key. The parameters should be specified under the `hapi_parameters` section in this YAML file. Each parameter should be a key-value pair. If a parameter doesn't require a value, you can set it as `true`. Here is an example:
 ```
-    hapi_parameters: 
-      jurisdiction: DE
-      locale: de-DE
-      tx: n/a
-      debug: true
-      proxy: 192.168.110.10:3128
+sushi:
+  min_version: "3.0.0"
+  parameters:
+    generate-snapshots: true
+  ignore:
+    warning:
+      - "error message 1 of known warnings"
+hapi:
+  min_version: "3.0.0"
+  parameters: 
+    jurisdiction: DE
+    locale: de-DE
+    tx: "n/a"
+    debug: true
+    proxy: "192.168.110.10:3128"
+    allow-example-urls: "true"
+  ignore:
+    warning:
+      - "error message 1 of known warnings"
+      - "error message 2 of known warnings"
+
+
 ```
 
-2. **Via the configuration field:** You can specify additional parameters directly in your configuration under the `codfsh.HapiValidator.Settings.AdditionalParameter` key. Here you can specify parameters as a string, each starting with a dash `-`. If a parameter doesn't need a value, simply write its name. If it requires a value, provide it after a space. Here's an example:
+2. **Via a project settings file:** If you privide a `codfsh-config.yaml` file next to your `sushi-config.yaml` file you can override the global settings whith project specific settings. Please make sure that you have the option `codfsh.Settings.UseProjectSettingFiles` enabled in the codfsh settings. 
+
+3. **Via the configuration field in the codfsh settings:** You can specify additional parameters fot the hapi validation directly in your configuration under the `codfsh.HapiValidator.Settings.AdditionalParameter` key. Here you can specify parameters as a string, each starting with a dash `-`. If a parameter doesn't need a value, simply write its name. If it requires a value, provide it after a space. Here's an example:
 ```
     "-jurisdiction DE -locale de-DE -tx n/a -debug"
 ```
-If a parameter is set in both the settings file and the configuration field, it will only be used once in the validation command.
+If a parameter for the hapi config is set in more than one setting file or the configuration field, it will only be used once in the validation command. 
 
-This gives you flexibility in configuring your validation parameters. For instance, you might want to set common parameters in the settings file and override or add specific ones via the configuration field for a particular workspace.
+This gives you flexibility in configuring your validation parameters. For instance, you might want to set common parameters in the global settings file or the codfsh settings of the hapi validator. For specific project settings you can override the global settings by adding specific ones for a particular project/workspace.
 
-To see all the available parameters for the HAPI Validator, please refer to the HAPI Validator documentation.
+
 
 
 [runCommands]: https://github.com/gematik/codfsh/raw/main/images/runCommands.png

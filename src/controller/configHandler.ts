@@ -1,9 +1,11 @@
 import * as vscode from 'vscode';
 import { DebugHandler } from './debugHandler';
 import * as fs from 'fs';
-import { SushiSettings } from '../models/sushiSettings';
+import { SushiParameters } from '../models/sushiSettings';
 import os = require('os');
 import * as yaml from 'js-yaml';
+import path = require('path');
+import { error } from 'console';
 
 export class ConfigHandler {
     debugHandler: DebugHandler;
@@ -22,62 +24,79 @@ export class ConfigHandler {
         return this.resolveAndValidatePath(path, section);
     }
 
-    public getSushiSettings(section: string): SushiSettings {
+    public getSushiSettings(section: string): SushiParameters {
         let config = this.getActualConfiguration();
         let buildSnapshots = config.get<boolean>(section + '.BuildSnapshots');
         buildSnapshots = this.isSectionDefined(buildSnapshots, section + '.BuildSnapshots');
-        return new SushiSettings(buildSnapshots);
+        // TODO: read sushi settings from global and local config file
+        return new SushiParameters(buildSnapshots);
     }
 
-    public getHapiParameters(section: string): any {
-        // Get settings from yaml file
-        let settingsFileParameters = this.getParametersFromSettingsFile(section + '.SettingsFile');
-    
-        // Get additional parameters from configuration
-        let config = this.getActualConfiguration();
-        let additionalParameter = config.get<string>(section + '.AdditionalParameters');
-    
-        // Create an object with the additional parameter
-        let additionalParametersObj: { [key: string]: string | boolean } = {};
-        if (additionalParameter) {
-            let splitParameters = additionalParameter.split(' ');
-            for (let i = 0; i < splitParameters.length; i++) {
-                // If parameter starts with '-', it's a key
-                if (splitParameters[i].startsWith('-')) {
-                    let key = splitParameters[i].substring(1);
-                    // If next parameter also starts with '-', or does not exist, set current key to true
-                    if (i + 1 === splitParameters.length || splitParameters[i + 1].startsWith('-')) {
-                        additionalParametersObj[key] = true;
-                    } else {
-                        // Else set it to the next parameter (its value)
-                        additionalParametersObj[key] = splitParameters[i + 1];
-                        i++; // Skip next parameter since it's used as value
-                    }
-                }
-            }
-        }
-        
-    
-        // Merge parameters with the additionalParameter being given preference
-        return {...settingsFileParameters, ...additionalParametersObj};
+    public isLocalProjectSettingsFileActive(): boolean {
+        return this.isSectionDefined(this.getActualConfiguration().get<boolean>("Settings.UseProjectSettingFiles"), "Settings.UseProjectSettingFiles");
     }
 
-    public getParametersFromSettingsFile(section: string): any {
-        let config = this.getActualConfiguration();
-        let filePath = config.get<string>(section);
-        if(filePath) {
-            try {
-                let fileContents = fs.readFileSync(filePath, 'utf8');
-                let data: any = yaml.load(fileContents);
-                return data.hapi_parameters;
-            } catch (e) {
-                this.debugHandler.log("error",`Error reading or parsing YAML file from '${filePath}'`);
-                return {};
+    public getHapiParametersFromExtensionConfig(): any {
+        const config = this.getActualConfiguration();
+        const globalSettingsFileParameters = this.getParametersFromGlobalSettingsFile("Settings.SettingsFile");
+        const additionalParameter = config.get<string>("HapiValidator.Settings" + '.AdditionalParameters');
+    
+        const additionalParametersObj: { [key: string]: string | boolean } = additionalParameter ? this.parseAdditionalParameters(additionalParameter) : {};
+    
+        return { ...globalSettingsFileParameters, ...additionalParametersObj };
+    }
+
+    private parseAdditionalParameters(additionalParameter: string) {
+        return additionalParameter.split(' ').reduce((obj, param, i, params) => {
+            if (param.startsWith('-')) {
+                const key = param.substring(1);
+                obj[key] = (i + 1 === params.length || params[i + 1].startsWith('-')) ? true : params[i + 1];
             }
-        } else { 
-            this.debugHandler.log("info",`The location of an optional YAML file for reading additional parameters is not set in the settings of the extension under '${section}'`);
+            return obj;
+        }, {} as { [key: string]: string | boolean });
+    }
+    
+
+    public getSettingsFromYamlFile(filePath: string | undefined, yamlProperty: string): any {
+        if (!filePath) {
+            this.debugHandler.log("info", "The location of an optional YAML file for reading additional parameters is not set in the settings.");
             return {};
         }
+    
+        try {
+            const fileContents = fs.readFileSync(filePath, 'utf8');
+            const data: any = yaml.load(fileContents);
+            return data.hapi[yamlProperty];
+        } catch (e) {
+            this.debugHandler.log("error", `Error reading or parsing YAML file from '${filePath}' Error: '${e}'`);
+            return {};
+        }
+    }
+    
+    public getParametersFromSettingsFile(filePath: string | undefined): any {
+        return this.getSettingsFromYamlFile(filePath, "parameters");
+    }
+    
+    public getIgnoredDiagnosticsFromSettingsFile(filePath: string | undefined): any {
+        return this.getSettingsFromYamlFile(filePath, "ignore");
+    }
+    
+    public getParametersFromGlobalSettingsFile(section: string): any {
+        let config = this.getActualConfiguration();
+        let filePath = config.get<string>(section);
+    
+        if (filePath === undefined) {
+            this.debugHandler.log("info", `Configuration section not set '${section}' to read from global YAML config file`);
+            return {};
+        }
+    
+        filePath = this.expandHomeDir(filePath);
+    
+        return this.getParametersFromSettingsFile(filePath);
+    }
+    
+    public getParametersFromLocalSettingsFile(filePath: string): any {
+        return this.getParametersFromSettingsFile(filePath);
     }
     
 
@@ -102,6 +121,13 @@ export class ConfigHandler {
             path = os.homedir() + path.substring(1);
         }
         return path;
+    }
+
+    private expandHomeDir(filePath: string) {
+        if (filePath.startsWith('~')) {
+            return path.join(os.homedir(), filePath.slice(1));
+        }
+        return filePath;
     }
 
     private isSectionDefined<T>(result: T | undefined, section: string): T {

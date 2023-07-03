@@ -2,14 +2,14 @@ import { DebugHandler } from "../debugHandler";
 import { PathController } from "../pathController";
 import { ProcessController } from "../processController";
 import { ConfigHandler } from "../configHandler";
-import { SushiSettings } from "../../models/sushiSettings";
+import { SushiParameters } from "../../models/sushiSettings";
 const path = require("path");
 
 export class SushiWrapper {
 
-    processController : ProcessController;
     debugHandler : DebugHandler;
     pathController : PathController;
+    processController : ProcessController;
     configHandler: ConfigHandler;
 
     constructor(debugHandler : DebugHandler, pathController : PathController, configHandler: ConfigHandler, processController : ProcessController ){
@@ -32,7 +32,7 @@ export class SushiWrapper {
         });
     }
 
-    private async runSushi(ressourceFolderPath: string, sushiSettings: SushiSettings) {
+    private async runSushi(ressourceFolderPath: string, sushiSettings: SushiParameters) {
         let args: string[] = [];
         const ressourceFolderPathPosix = `"${ressourceFolderPath.split(path.sep).join(path.posix.sep)}"`;
         args.push(ressourceFolderPathPosix);
@@ -41,7 +41,7 @@ export class SushiWrapper {
         return output;
     }
 
-    private handleSushieSettings(sushiSettings: SushiSettings, args: string[]) {
+    private handleSushieSettings(sushiSettings: SushiParameters, args: string[]) {
         if (sushiSettings.generateSnapshots) {
             this.debugHandler.log("info","Snapshot generation is active!");
             args.push('-s');

@@ -2,7 +2,7 @@
   "name": "codfsh",
   "displayName": "codfsh",
   "description": "Wrapper for SUSHI Shorthand and Hapi Validator to provide propper warning and error messages in VS ",
-  "version": "1.0.9",
+  "version": "1.1.0",
   "publisher": "gematikde",
   "icon": "./images/icon.png",
   "repository": {
@@ -25,30 +25,36 @@
     "configuration": {
       "title": "Codfsh",
       "properties": {
+        "codfsh.Settings.SettingsFile": {
+          "type": "string",
+          "default": "~/.fhir/settings/codfsh-config.yaml",
+          "scope": "resource",
+          "markdownDescription": "The location of a global configuration (YAML) file for sushi- and hapi-settings. For an example YAML File refer to the [extension Readme](https://github.com/gematik/codfsh/blob/main/README.md)."
+        },
+        "codfsh.Settings.UseProjectSettingFiles": {
+          "type":"boolean",
+          "default": true,
+          "scope": "resource",
+          "markdownDescription": "If a project contains a codfsh-config.yaml file next to a sushi-config.yaml. Codfsh will use this file for configuration of the sushi- and hapi-settings. Overriding the settings in the global configuration file or hapi settings. For an example YAML File refer to the [extension Readme](https://github.com/gematik/codfsh/blob/main/README.md)."        
+        },
         "codfsh.HapiValidator.Executable": {
           "type": "string",
           "default": "~/.fhir/validators/validator_cli.jar",
           "scope": "resource",
           "description": "Specifies the destination of the hapi hapiValidator."
         },
-        "codfsh.HapiValidator.Settings.SettingsFile": {
-          "type": "string",
-          "default": "~/.fhir/settings/fhir-settings.yaml",
-          "scope": "resource",
-          "markdownDescription": "The location of an optional YAML file for reading additional parameters. For an example YAML File refer to the [extension Readme](https://github.com/gematik/codfsh/blob/main/README.md). For possible additional parameters, see the [FHIR Validator documentation](https://confluence.hl7.org/pages/viewpage.action?pageId=35718580#UsingtheFHIRValidator-OtherValidationParameters)."
-      },
-      "codfsh.HapiValidator.Settings.AdditionalParameters": {
-          "type": "string",
-          "default": "-debug",
-          "scope": "resource",
-          "markdownDescription": "Additional validation parameters that affect validation. For possible additional parameters, check the [FHIR Validator documentation](https://confluence.hl7.org/pages/viewpage.action?pageId=35718580#UsingtheFHIRValidator-OtherValidationParameters)."
-      },
-        "codfsh.Sushi.Settings.BuildSnapshots": {
-          "type": "boolean",
-          "default": false,
-          "scope": "resource",
-          "description": "Generate Snapshots"
-        }
+        "codfsh.HapiValidator.Settings.AdditionalParameters": {
+            "type": "string",
+            "default": "-debug",
+            "scope": "resource",
+            "markdownDescription": "Additional validation parameters that affect validation. For possible additional parameters, check the [FHIR Validator documentation](https://confluence.hl7.org/pages/viewpage.action?pageId=35718580#UsingtheFHIRValidator-OtherValidationParameters)."
+        },
+          "codfsh.Sushi.Settings.BuildSnapshots": {
+            "type": "boolean",
+            "default": false,
+            "scope": "resource",
+            "description": "Generate Snapshots"
+          }
       }
     },
     "commands": [

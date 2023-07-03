@@ -1,3 +1,3 @@
-export class SushiSettings {
+export class SushiParameters {
     constructor(public generateSnapshots: boolean) {}
 }

@@ -13,7 +13,7 @@ export class PathController {
 
     public async getPathVariables(): Promise<PathValues> {
         try {
-            const sushiConfigPath = await this.getSushiConfig();
+            const sushiConfigPath = await this.getConfigPath("sushi-config.yaml");
             this.debugHandler.log("info", "Found sushiConfigPath: " + sushiConfigPath);
             const resourceFolder = this.getResourceFolder(sushiConfigPath);
             this.debugHandler.log("info", "Found resourceFolder: " + resourceFolder);
@@ -23,18 +23,33 @@ export class PathController {
         }
     }
 
-    private async getSushiConfig(): Promise<string> {
+    public async tryGetConfigPath(filename: string): Promise<string> {
+        const configFile = await this.locateConfigFile(filename);
+        if (configFile) {
+            return vscode.Uri.file(configFile).fsPath;
+        } else {
+            this.debugHandler.log("info", `Unable to find a '${filename}'-file in the current Workspace.`);
+            return "";
+        }
+    }
+
+    private async getConfigPath(filename: string): Promise<string> {
         try {
-            const files = await this.getFiles(this.getWorkspaceFolder());
-            const sushiConfigFile = files.find(file => file.endsWith("sushi-config.yaml"));
-            if (sushiConfigFile) {
-                return vscode.Uri.file(sushiConfigFile).fsPath;
+            const configFile = await this.locateConfigFile(filename);
+            if (configFile) {
+                return vscode.Uri.file(configFile).fsPath;
             } else {
-                throw new Error("Unable to find a sushi-config.yaml in the current Workspace.");
+                throw new Error(`Unable to find a '${filename}'-file in the current Workspace.`);
             }
         } catch (error) {
             throw error;
         }
+    }
+
+    private async locateConfigFile(filename: string) {
+        const files = await this.getFiles(this.getWorkspaceFolder());
+        const configFile = files.find(file => file.endsWith(filename));
+        return configFile;
     }
 
     private getResourceFolder(sushiConfigPath: string): string {
