@@ -1,5 +1,3 @@
-
-
 # codfsh extension README
 
 This extension wraps SUSHI (FHIR Shorthand) and the HAPI Validator, providing comprehensive warning and error messages. It allows you to "run" your .fsh shorthand files to both generate FHIR .json files and validate them simultaneously.
@@ -31,62 +29,41 @@ If you have Firely Terminal installed and a `sushi-config.yaml` file present in 
 
 The SUSHI Shorthand and HAPI Validator must be installed on your system. These two FHIR Tools depend on other libraries and tools. Please follow the steps below to set up your `codfsh` environment.
 
-### Install Java JRE
+## Simplified Setup with Devcontainer
 
-Java JRE is needed to run the Hapi validator. Any newer version will be fine. The Hapi documentation refers to > JDK 17
+The best way to install and preconfigure the `codfsh` extension is by using the `.devcontainer` setup. This approach ensures that all necessary tools and configurations are automatically set up, providing a seamless development experience.
 
+### Using the Devcontainer
+
+1. **Copy the `.devcontainer` Folder**: Clone or download the `.devcontainer` folder from this repository and add it to the root of your project.
+
+2. **Open with VSCode in Container Mode**: Open your project in Visual Studio Code and use the command palette (`Ctrl+Shift+P`) to select "Remote-Containers: Reopen in Container". This will set up your development environment in a Docker container with all necessary tools preconfigured.
+
+3. **Start Developing**: Once the container is set up, you can start using the `codfsh` extension without any additional configuration steps.
+
+### Devcontainer Configuration
+
+The `.devcontainer` includes a `Dockerfile` and a `codfsh-config.yaml` file with the following preconfigured settings:
+
+```yaml
+sushi:
+  min_version: "3.0.0"
+hapi:
+  min_version: "3.0.0"
+  parameters: 
+    jurisdiction: DE
+    locale: de-DE
+    tx: "n/a"
+    debug: true
 ```
-sudo apt install default-jre
-```
+This configuration ensures that you have the correct versions of SUSHI and HAPI, along with customized parameters for your development needs.
 
-### Install dotnet SDK
+## Local Installation Without Devcontainer
 
-Dotnet SDK >= 6.0 is needed to run firely.terminal
+For users who prefer a local installation without using a devcontainer, we have provided detailed instructions on how to set up the `codfsh` extension and its dependencies manually. This alternative setup is ideal for those who want to configure their development environment on their local machine directly.
 
-```
-sudo apt install dotnet-sdk-6.0
-```
+Please refer to the [Local Installation Guide](./install_without_devcontainer.md) for step-by-step instructions on setting up the `codfsh` extension without using a devcontainer.
 
-### Install npm
-
-npm is needed to run SUSHI.
-
-```
-sudo apt install nodejs
-```
-
-```
-sudo apt install npm
-```
-
-### Install Sushi Shorthand
-
-SUSHI is the interpreter for `.fsh` files to create FHIR JSON files as your FHIR Specification.
-
-```
-sudo npm install -g fsh-sushi
-```
-
-### Install firely.terminal (optional)
-
-The Firely Terminal will be used in the background to manage your `~/.fhir` package library.
-
-```
-sudo dotnet tool install --global firely.terminal
-```
-
-The path of the HAPI Validator needs to be specified in the settings of the extension.
-
-### Download HAPI FHIR validator
-HAPI FHIR Validator is used via its command line interface. To download the HAPI FHIR Validator, please refer to the [official documentation](https://hapifhir.io/hapi-fhir/docs/getting_started/downloading_and_importing.html)
-
-Alternatively, you can download the `.jar` file directly:
-
-```
-wget https://github.com/hapifhir/org.hl7.fhir.core/releases/latest/download/validator_cli.jar
-```
-
-The path to the downloaded HAPI Validator jar-file needs to be specified in the settings of the extension.
 
 ## Extension Settings
 
