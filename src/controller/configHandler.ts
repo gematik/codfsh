@@ -9,23 +9,33 @@ import { error } from 'console';
 
 export class ConfigHandler {
     debugHandler: DebugHandler;
-
+    
     constructor(debugHandler: DebugHandler) {
         this.debugHandler = debugHandler;
     }
-
-    private getActualConfiguration(): vscode.WorkspaceConfiguration {
+    
+    private getExtensionConfiguration(): vscode.WorkspaceConfiguration {
         return vscode.workspace.getConfiguration('codfsh');
+    }
+    
+    public getMinVersion(isLocalProjectSettingsFileActive: boolean, localConfigPath: string, program: string): string {
+
+        if (!isLocalProjectSettingsFileActive) {
+            let config = this.getExtensionConfiguration();
+            return this.getSettingsFromYamlFile(config.get<string>(program), program + ".min_version");
+        }
+
+        return  this.getSettingsFromYamlFile(localConfigPath, program + ".min_version");
     }
 
     public getFilePathFromConfig(section: string): string {
-        let config = this.getActualConfiguration();
+        let config = this.getExtensionConfiguration();
         let path = config.get<string>(section);
         return this.resolveAndValidatePath(path, section);
     }
 
     public getSushiSettings(section: string): SushiParameters {
-        let config = this.getActualConfiguration();
+        let config = this.getExtensionConfiguration();
         let buildSnapshots = config.get<boolean>(section + '.BuildSnapshots');
         buildSnapshots = this.isSectionDefined(buildSnapshots, section + '.BuildSnapshots');
         // TODO: read sushi settings from global and local config file
@@ -33,12 +43,12 @@ export class ConfigHandler {
     }
 
     public isLocalProjectSettingsFileActive(): boolean {
-        return this.isSectionDefined(this.getActualConfiguration().get<boolean>("Settings.UseProjectSettingFiles"), "Settings.UseProjectSettingFiles");
+        return this.isSectionDefined(this.getExtensionConfiguration().get<boolean>("Settings.UseProjectSettingFiles"), "Settings.UseProjectSettingFiles");
     }
 
     public getHapiParametersFromExtensionConfig(): any {
-        const config = this.getActualConfiguration();
-        const globalSettingsFileParameters = this.getParametersFromGlobalSettingsFile("Settings.SettingsFile");
+        const config = this.getExtensionConfiguration();
+        const globalSettingsFileParameters = this.getParametersFromGlobalSettingsFile("Settings.SettingsFile", "hapi");
         const additionalParameter = config.get<string>("HapiValidator.Settings" + '.AdditionalParameters');
     
         const additionalParametersObj: { [key: string]: string | boolean } = additionalParameter ? this.parseAdditionalParameters(additionalParameter) : {};
@@ -57,7 +67,7 @@ export class ConfigHandler {
     }
     
 
-    public getSettingsFromYamlFile(filePath: string | undefined, yamlProperty: string): any {
+    private getSettingsFromYamlFile(filePath: string | undefined, yamlProperty: string): any {
         if (!filePath) {
             this.debugHandler.log("info", "The location of an optional YAML file for reading additional parameters is not set in the settings.");
             return {};
@@ -66,37 +76,39 @@ export class ConfigHandler {
         try {
             const fileContents = fs.readFileSync(filePath, 'utf8');
             const data: any = yaml.load(fileContents);
-            return data.hapi[yamlProperty];
+            return data[yamlProperty];
         } catch (e) {
             this.debugHandler.log("error", `Error reading or parsing YAML file from '${filePath}' Error: '${e}'`);
             return {};
         }
     }
     
-    public getParametersFromSettingsFile(filePath: string | undefined): any {
-        return this.getSettingsFromYamlFile(filePath, "parameters");
+    public getParametersFromSettingsFile(filePath: string | undefined, program: string): any {
+        return this.getSettingsFromYamlFile(filePath, program + ".parameters");
+    }
+
+    public getMinVersionFromSettingsFile(filePath: string | undefined, program: string): any {
+        return this.getSettingsFromYamlFile(filePath, program + ".min_version");
     }
     
-    public getIgnoredDiagnosticsFromSettingsFile(filePath: string | undefined): any {
-        return this.getSettingsFromYamlFile(filePath, "ignore");
+    public getIgnoredDiagnosticsFromSettingsFile(filePath: string | undefined, program: string): any {
+        return this.getSettingsFromYamlFile(filePath, program + ".ignore");
     }
     
-    public getParametersFromGlobalSettingsFile(section: string): any {
-        let config = this.getActualConfiguration();
+    public getParametersFromGlobalSettingsFile(section: string, program: string): any {
+        let config = this.getExtensionConfiguration();
         let filePath = config.get<string>(section);
     
         if (filePath === undefined) {
             this.debugHandler.log("info", `Configuration section not set '${section}' to read from global YAML config file`);
             return {};
         }
-    
-        filePath = this.expandHomeDir(filePath);
-    
-        return this.getParametersFromSettingsFile(filePath);
+        
+        return this.getParametersFromSettingsFile(this.expandHomeDir(filePath), program);
     }
     
-    public getParametersFromLocalSettingsFile(filePath: string): any {
-        return this.getParametersFromSettingsFile(filePath);
+    public getParametersFromLocalSettingsFile(filePath: string, program: string): any {
+        return this.getParametersFromSettingsFile(filePath, program);
     }
     
 
