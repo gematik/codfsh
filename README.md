@@ -37,6 +37,7 @@
       </ul>
     </li>
   </ol>
+</details>
 
 ## About The Project
 This extension wraps SUSHI (FHIR Shorthand) and the HAPI Validator, providing comprehensive warning and error messages. It allows you to "run" your .fsh shorthand files to both generate FHIR .json files and validate them simultaneously.
