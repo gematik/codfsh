@@ -55,10 +55,11 @@ Key features are the commands to run SUSHI and/or Hapi validator via `CTRL`+`Shi
 ### Execute Sushi Shorthand
 
 Execute SUSHI Shorthand with `Run Sushi` command to get line-based error or warning messages in the Problems tab of your terminal.
+Execute SUSHI Shorthand with `Run Sushi with Snapshots` command to run sushi with the `--snapshot` option.
 
 ![sushi Errors Example][errorImage]
 
-> Tip: You can bind a key to execute SUSHI Shorthand. We recommend you use 'F5' to run SUSHI.
+> Tip: You can bind a key to execute SUSHI Shorthand. We recommend you use 'F5' to run SUSHI and 'F6' to run SUSHI with snapshots.
 
 ### Execute Hapi Validator
 

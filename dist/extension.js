@@ -43,6 +43,15 @@ class SushiController {
             this.debugHandler.log("error", error, true);
         }
     }
+    async executeWithSnapshots() {
+        try {
+            await this.checkDependencies();
+            await this.runSushi(true);
+        }
+        catch (error) {
+            this.debugHandler.log("error", error, true);
+        }
+    }
     async checkDependencies() {
         this.debugHandler.log("info", "Checking FHIR Packages Dependencies...", true);
         const pathValues = await this.pathController.getPathVariables();
@@ -50,9 +59,9 @@ class SushiController {
         await this.dependencyEnsurer.installMissingDependencies(neededDependencies);
         this.debugHandler.log("info", "All FHIR Packages Dependencies checked.", true);
     }
-    async runSushi() {
+    async runSushi(snapshot = false) {
         this.debugHandler.log("info", "Started Sushi...", true);
-        const consoleOutput = await this.getConsoleOutput();
+        const consoleOutput = await this.getConsoleOutput(snapshot);
         var diagnostics = this.sushiOutputParser.getDiagnostics(consoleOutput);
         this.addDiagnostics(diagnostics);
         this.debugHandler.log("info", "Sushi completed.", true);
@@ -60,9 +69,9 @@ class SushiController {
     addDiagnostics(diagnostics) {
         this.diagnosticController.addDiagnostics(diagnostics);
     }
-    async getConsoleOutput() {
+    async getConsoleOutput(snapshot = false) {
         const pathValues = await this.pathController.getPathVariables();
-        const consoleOutput = await this.sushiWrapper.getConsoleOutput(pathValues.ressourceFolderPath);
+        const consoleOutput = await this.sushiWrapper.getConsoleOutput(pathValues.ressourceFolderPath, snapshot);
         return consoleOutput;
     }
 }
@@ -84,10 +93,13 @@ class SushiWrapper {
         this.processController = processController;
         this.configHandler = configHandler;
     }
-    async getConsoleOutput(ressourceFolderPath) {
+    async getConsoleOutput(ressourceFolderPath, snapshot = false) {
         return new Promise(async (resolve, reject) => {
             let sushiSettings = this.configHandler.getSushiSettings("Sushi.Settings");
             try {
+                if (snapshot) {
+                    sushiSettings.generateSnapshots = true;
+                }
                 let output = await this.runSushi(ressourceFolderPath, sushiSettings);
                 resolve(output);
             }
@@ -5304,6 +5316,10 @@ function createSubscriptions(context, diagnosticCollection, controllers) {
         diagnosticCollection.clear();
         controllers.sushiController.execute();
     });
+    let runSushiSnapshotSubscription = vscode.commands.registerCommand('codfsh.runSushi.snapshot', () => {
+        diagnosticCollection.clear();
+        controllers.sushiController.executeWithSnapshots();
+    });
     let runHapiSubscription = vscode.commands.registerCommand('codfsh.runHapi', () => {
         diagnosticCollection.clear();
         controllers.hapiController.executeForCurrentFile();
@@ -5314,6 +5330,7 @@ function createSubscriptions(context, diagnosticCollection, controllers) {
         await controllers.hapiController.executeAll();
     });
     context.subscriptions.push(runSushiSubscription);
+    context.subscriptions.push(runSushiSnapshotSubscription);
     context.subscriptions.push(runHapiSubscription);
     context.subscriptions.push(runFhirFshSubscription);
 }

@@ -45,6 +45,16 @@ export class SushiController{
         }
     }
 
+    public async executeWithSnapshots() {
+        try {
+            await this.checkDependencies();
+            await this.runSushi(true);
+
+        } catch (error: any)  {
+            this.debugHandler.log("error", error, true);
+        }
+    }
+
     async checkDependencies() {
         this.debugHandler.log("info", "Checking FHIR Packages Dependencies...", true);
         const pathValues =  await this.pathController.getPathVariables();
@@ -53,9 +63,9 @@ export class SushiController{
         this.debugHandler.log("info", "All FHIR Packages Dependencies checked.", true);
     }
 
-    private async runSushi() {
+    private async runSushi(snapshot: boolean = false) {
         this.debugHandler.log("info", "Started Sushi...", true);
-        const consoleOutput = await this.getConsoleOutput();
+        const consoleOutput = await this.getConsoleOutput(snapshot);
         var diagnostics = this.sushiOutputParser.getDiagnostics(consoleOutput);
         this.addDiagnostics(diagnostics);
         this.debugHandler.log("info", "Sushi completed.", true);
@@ -65,9 +75,9 @@ export class SushiController{
         this.diagnosticController.addDiagnostics(diagnostics);
     }
 
-    private async getConsoleOutput() {
+    private async getConsoleOutput(snapshot: boolean = false) {
         const pathValues = await this.pathController.getPathVariables();
-        const consoleOutput = await this.sushiWrapper.getConsoleOutput(pathValues.ressourceFolderPath);
+        const consoleOutput = await this.sushiWrapper.getConsoleOutput(pathValues.ressourceFolderPath, snapshot);
         return consoleOutput;
     }
 }
