@@ -29,6 +29,11 @@ function createSubscriptions(context: vscode.ExtensionContext, diagnosticCollect
         controllers.sushiController.execute();
     });
 
+    let runSushiSnapshotSubscription = vscode.commands.registerCommand('codfsh.runSushi.snapshot', () => {
+        diagnosticCollection.clear();
+        controllers.sushiController.executeWithSnapshots();
+    });
+
     let runHapiSubscription = vscode.commands.registerCommand('codfsh.runHapi', () => {
         diagnosticCollection.clear();
         controllers.hapiController.executeForCurrentFile();
@@ -41,6 +46,7 @@ function createSubscriptions(context: vscode.ExtensionContext, diagnosticCollect
     });
 
     context.subscriptions.push(runSushiSubscription);
+    context.subscriptions.push(runSushiSnapshotSubscription);
     context.subscriptions.push(runHapiSubscription);
     context.subscriptions.push(runFhirFshSubscription);
 }
