@@ -48,6 +48,12 @@
           "default": false,
           "scope": "resource",
           "description": "Generate Snapshots"
+        },
+        "codfsh.Sushi.Settings.CheckPackages": {
+          "type": "boolean",
+          "default": true,
+          "scope": "resource",
+          "description": "Check Packages before build"
         }
       }
     },
