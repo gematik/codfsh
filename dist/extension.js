@@ -34,19 +34,13 @@ class SushiController {
         this.dependencyController = new dependencyController_1.DependencyController(this.debugHandler, this.pathController);
         this.dependencyEnsurer = new dependencyEnsurer_1.DependencyEnsurer(this.debugHandler, this.processController);
     }
-    async execute() {
+    async execute(snapshots) {
+        let sushiSettings = this.configHandler.getSushiSettings("Sushi.Settings");
         try {
-            await this.checkDependencies();
-            await this.runSushi();
-        }
-        catch (error) {
-            this.debugHandler.log("error", error, true);
-        }
-    }
-    async executeWithSnapshots() {
-        try {
-            await this.checkDependencies();
-            await this.runSushi(true);
+            if (sushiSettings.checkPackages == true) {
+                await this.checkDependencies();
+            }
+            await this.runSushi(snapshots);
         }
         catch (error) {
             this.debugHandler.log("error", error, true);
@@ -398,8 +392,10 @@ class ConfigHandler {
     getSushiSettings(section) {
         let config = this.getActualConfiguration();
         let buildSnapshots = config.get(section + '.BuildSnapshots');
+        let checkPackages = config.get(section + '.CheckPackages');
         buildSnapshots = this.isSectionDefined(buildSnapshots, section + '.BuildSnapshots');
-        return new sushiSettings_1.SushiSettings(buildSnapshots);
+        checkPackages = this.isSectionDefined(checkPackages, section + '.CheckPackages');
+        return new sushiSettings_1.SushiSettings(buildSnapshots, checkPackages);
     }
     getHapiParameters(section) {
         // Get settings from yaml file
@@ -493,8 +489,9 @@ module.exports = require("fs");
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.SushiSettings = void 0;
 class SushiSettings {
-    constructor(generateSnapshots) {
+    constructor(generateSnapshots, checkPackages) {
         this.generateSnapshots = generateSnapshots;
+        this.checkPackages = checkPackages;
     }
 }
 exports.SushiSettings = SushiSettings;
@@ -5314,11 +5311,11 @@ function createControllers(debugHandler, diagnosticCollection) {
 function createSubscriptions(context, diagnosticCollection, controllers) {
     let runSushiSubscription = vscode.commands.registerCommand('codfsh.runSushi', () => {
         diagnosticCollection.clear();
-        controllers.sushiController.execute();
+        controllers.sushiController.execute(false);
     });
     let runSushiSnapshotSubscription = vscode.commands.registerCommand('codfsh.runSushi.snapshot', () => {
         diagnosticCollection.clear();
-        controllers.sushiController.executeWithSnapshots();
+        controllers.sushiController.execute(true);
     });
     let runHapiSubscription = vscode.commands.registerCommand('codfsh.runHapi', () => {
         diagnosticCollection.clear();
@@ -5326,7 +5323,7 @@ function createSubscriptions(context, diagnosticCollection, controllers) {
     });
     let runFhirFshSubscription = vscode.commands.registerCommand('codfsh.runAll', async () => {
         diagnosticCollection.clear();
-        await controllers.sushiController.execute();
+        await controllers.sushiController.execute(false);
         await controllers.hapiController.executeAll();
     });
     context.subscriptions.push(runSushiSubscription);

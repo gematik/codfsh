@@ -25,8 +25,10 @@ export class ConfigHandler {
     public getSushiSettings(section: string): SushiSettings {
         let config = this.getActualConfiguration();
         let buildSnapshots = config.get<boolean>(section + '.BuildSnapshots');
+        let checkPackages = config.get<boolean>(section + '.CheckPackages');
         buildSnapshots = this.isSectionDefined(buildSnapshots, section + '.BuildSnapshots');
-        return new SushiSettings(buildSnapshots);
+        checkPackages = this.isSectionDefined(checkPackages, section + '.CheckPackages');
+        return new SushiSettings(buildSnapshots, checkPackages);
     }
 
     public getHapiParameters(section: string): any {

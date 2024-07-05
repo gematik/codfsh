@@ -35,21 +35,13 @@ export class SushiController{
         this.dependencyEnsurer = new DependencyEnsurer(this.debugHandler, this.processController);
     }
 
-    public async execute() {
+    public async execute(snapshots: boolean) {
+        let sushiSettings = this.configHandler.getSushiSettings("Sushi.Settings");
         try {
-            await this.checkDependencies();
-            await this.runSushi();
-
-        } catch (error: any)  {
-            this.debugHandler.log("error", error, true);
-        }
-    }
-
-    public async executeWithSnapshots() {
-        try {
-            await this.checkDependencies();
-            await this.runSushi(true);
-
+            if (sushiSettings.checkPackages == true) {
+                await this.checkDependencies();
+            }
+            await this.runSushi(snapshots);
         } catch (error: any)  {
             this.debugHandler.log("error", error, true);
         }
