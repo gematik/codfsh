@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { SushiController } from './controller/sushi/sushiController';
 import { HapiController } from './controller/hapi/hapiController';
+import { FirelyController } from './controller/firely/firelyController';
 import { DebugHandler } from './controller/debugHandler';
 
 export function activate(context: vscode.ExtensionContext) {
@@ -19,36 +20,43 @@ export function activate(context: vscode.ExtensionContext) {
 function createControllers(debugHandler: DebugHandler, diagnosticCollection: vscode.DiagnosticCollection) {
     let sushiController = new SushiController(debugHandler, diagnosticCollection);
     let hapiController = new HapiController(debugHandler, diagnosticCollection);
+    let firelyController = new FirelyController(debugHandler, diagnosticCollection);
 
-    return { sushiController, hapiController };
+    return { sushiController, hapiController, firelyController };
 }
 
-function createSubscriptions(context: vscode.ExtensionContext, diagnosticCollection: vscode.DiagnosticCollection, controllers: { sushiController: SushiController, hapiController: HapiController }) {
-    let runSushiSubscription = vscode.commands.registerCommand('codfsh.runSushi', () => {
-        diagnosticCollection.clear();
-        controllers.sushiController.execute(false);
-    });
+function createSubscriptions(
+    context: vscode.ExtensionContext,
+    diagnosticCollection: vscode.DiagnosticCollection,
+    controllers: {
+        sushiController: SushiController;
+        hapiController: HapiController;
+        firelyController: FirelyController;
+    }) {
 
-    let runSushiSnapshotSubscription = vscode.commands.registerCommand('codfsh.runSushi.snapshot', () => {
+    const runSushi = vscode.commands.registerCommand('codfsh.runSushi', () => {
         diagnosticCollection.clear();
         controllers.sushiController.execute(true);
     });
 
-    let runHapiSubscription = vscode.commands.registerCommand('codfsh.runHapi', () => {
+    const runHapi = vscode.commands.registerCommand('codfsh.runHapi', () => {
         diagnosticCollection.clear();
         controllers.hapiController.executeForCurrentFile();
     });
 
-    let runFhirFshSubscription = vscode.commands.registerCommand('codfsh.runAll', async () => {
+    const runFirely = vscode.commands.registerCommand('codfsh.runFirely', async () => {
+        diagnosticCollection.clear();
+        await controllers.firelyController.executeAll();
+    });
+
+    const runAll = vscode.commands.registerCommand('codfsh.runAll', async () => {
         diagnosticCollection.clear();
         await controllers.sushiController.execute(false);
         await controllers.hapiController.executeAll();
+        await controllers.firelyController.executeAll();
     });
 
-    context.subscriptions.push(runSushiSubscription);
-    context.subscriptions.push(runSushiSnapshotSubscription);
-    context.subscriptions.push(runHapiSubscription);
-    context.subscriptions.push(runFhirFshSubscription);
+    context.subscriptions.push(runSushi, runHapi, runFirely, runAll);
 }
 
 function handleError(debugHandler: DebugHandler, e: any) {
