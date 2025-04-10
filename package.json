@@ -72,8 +72,12 @@
         "icon": "$(play)"
       },
       {
+        "command": "codfsh.runFirely",
+        "title": "Run Firely Terminal validator"
+      },
+      {
         "command": "codfsh.runAll",
-        "title": "Run Sushi and Hapi on all Files"
+        "title": "Run Sushi, Hapi and Firely on all Files"
       }
     ],
     "keybindings": [
@@ -89,8 +93,13 @@
       },
       {
         "command": "codfsh.runHapi",
-        "key": "Shift+f5",
-        "mac": "Shift+f5"
+        "key": "shift+f5",
+        "mac": "shift+f5"
+      },
+      {
+        "command": "codfsh.runFirely",
+        "key": "shift+f6",
+        "mac": "shift+f6"
       },
       {
         "command": "codfsh.runAll",

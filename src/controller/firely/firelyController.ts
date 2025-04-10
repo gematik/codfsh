@@ -26,15 +26,21 @@ export class FirelyController {
 
     public async executeAll() {
         this.debugHandler.log("info", "Running Firely Terminal Validation...", true);
+    
         const pathValues = await this.pathController.getPathVariables();
+    
+        this.debugHandler.log("info", `Found sushiConfigPath: ${pathValues.sushiConfigPath}`, true);
+        this.debugHandler.log("info", `Found resourceFolder: ${pathValues.ressourceFolderPath}`, true);
+    
         const validationOutputs = await this.firelyWrapper.validateAll(pathValues.ressourceFolderPath);
         const diagnostics: Diagnostic[] = [];
-
+    
         for (const { output, file } of validationOutputs) {
+            this.debugHandler.log("info", `Parsing validation output for ${file}`, false);
             const parsed = this.firelyOutputParser.getDiagnostics(output, file);
             diagnostics.push(...parsed);
         }
-
+    
         this.diagnosticController.addDiagnostics(diagnostics);
         this.debugHandler.log("info", "Firely Validation complete.", true);
     }

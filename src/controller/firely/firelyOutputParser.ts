@@ -10,39 +10,64 @@ export class FirelyOutputParser {
         this.debugHandler = debugHandler;
     }
 
-    public getDiagnostics(logOutput: string, filePath: string): Diagnostic[] {
+    public getDiagnostics(logOutput: string, fallbackFilePath: string): Diagnostic[] {
         const diagnostics: Diagnostic[] = [];
 
-        // Regex sucht Blöcke wie:
-        // Severity: error
-        // Location: ... (optional)
-        // Message: ...
-        const regex = /Severity:\s*(?<severity>error|warning|information)\s*[\r\n]+(?:Location:\s*(?<location>[^\r\n]+)[\r\n]+)?Message:\s*(?<message>[^\r\n]+)/gmi;
-        let match;
+        const lines = logOutput.split(/\r?\n/);
+        let currentFile = fallbackFilePath;
+        let pending: Partial<Diagnostic> = {};
 
-        while ((match = regex.exec(logOutput)) !== null) {
-            const severity = this.toSeverity(match.groups?.severity ?? 'error');
-            const message = match.groups?.message?.trim() ?? 'Unknown validation issue';
-            const locationPath = match.groups?.location ?? filePath;
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
 
-            const lineNumber = 0; // Firely gibt oft keine Zeile zurück
-            const range = new Range(lineNumber, 0, lineNumber, 100);
+            // 1. Datei-Zuweisung
+            const fileMatch = line.match(/^(.+\.json|\.xml)$/);
+            if (fileMatch) {
+                currentFile = fileMatch[1].trim();
+                continue;
+            }
 
-            const diagnostic = new Diagnostic(severity, message, filePath, range);
-            diagnostics.push(diagnostic);
+            // 2. Error oder Warning
+            const issueMatch = line.match(/^(Error|Warning):\s+(.*)$/i);
+            if (issueMatch) {
+                pending = {
+                    severity: this.toSeverity(issueMatch[1]),
+                    message: issueMatch[2].trim(),
+                    file: currentFile,
+                    range: new Range(0, 0, 0, 100), // kein Line-Mapping möglich
+                };
+                continue;
+            }
+
+            // 3. Kontext "At:" oder Constraint-ID
+            if (pending && pending.message) {
+                if (line.startsWith("At: ")) {
+                    pending.message += `\nAt: ${line.replace("At: ", "").trim()}`;
+                } else if (line.match(/^http(s)?:\/\/.*?\|(.+)$/)) {
+                    const constraint = line.trim();
+                    pending.message += `\nConstraint: ${constraint}`;
+                    diagnostics.push(new Diagnostic(
+                        pending.severity!,
+                        pending.message!,
+                        pending.file!,
+                        pending.range!
+                    ));
+                    pending = {};
+                }
+            }
         }
 
-        if (diagnostics.length === 0) {
-            this.debugHandler.log("info", "No issues found by Firely parser.");
+        // Sonderfall: keine Fehler gefunden
+        if (/No issues found/i.test(logOutput)) {
+            this.debugHandler.log("info", "Firely found no issues.");
         }
 
         return diagnostics;
     }
 
-    private toSeverity(sev: string): DiagnosticSeverity {
-        switch (sev.toLowerCase()) {
+    private toSeverity(raw: string): DiagnosticSeverity {
+        switch (raw.toLowerCase()) {
             case 'warning': return DiagnosticSeverity.Warning;
-            case 'information': return DiagnosticSeverity.Information;
             default: return DiagnosticSeverity.Error;
         }
     }

@@ -16,7 +16,9 @@ export class FirelyWrapper {
         this.processController = processController;
     }
 
-    public async validateAll(resourceFolderPath: string): Promise<{ file: string; output: string }[]> {
+    public async validateAll(baseFolderPath: string): Promise<{ file: string; output: string }[]> {
+        const resourceFolderPath = path.join(baseFolderPath, 'fsh-generated', 'resources');
+
         if (!fs.existsSync(resourceFolderPath)) {
             this.debugHandler.log("error", `Folder ${resourceFolderPath} does not exist.`, true);
             return [];
@@ -26,11 +28,13 @@ export class FirelyWrapper {
             .filter(f => f.endsWith('.json') || f.endsWith('.xml'))
             .map(f => path.join(resourceFolderPath, f));
 
+        this.debugHandler.log("info", `Found ${files.length} resource files for validation in ${resourceFolderPath}.`, true);
+
         const results: { file: string; output: string }[] = [];
-        let queue: Promise<void>[] = [];
         let activePromises: Promise<void>[] = [];
 
         for (const file of files) {
+            this.debugHandler.log("info", `Validating ${file}`, false);
             const validationPromise = this.validateFile(file).then(output => {
                 results.push({ file, output });
             }).catch(err => {
