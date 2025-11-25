@@ -6,4 +6,12 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## [Unreleased]
 
-- Initial release
+## [1.1.0] - 2025-11-25
+
+### Added
+- ANSI color rendering support for better output visualization
+- Updated dependencies for improved stability
+
+### Changed
+- Updated testing dependencies
+- Improved .gitignore configuration
