@@ -23,13 +23,13 @@ export class ProcessController {
 
                 const run = spawn('sh', ['-c', logCommand]);
                 run.stdout.on('data', (data: Buffer) => {
-                    const output = data.toString();
+                    const output = this.stripAnsiSequences(data.toString());
                     channel.appendLine(output);
                     stringOutput += output;
                 });
 
                 run.stderr.on('data', (data: Buffer) => {
-                    const error = data.toString();
+                    const error = this.stripAnsiSequences(data.toString());
                     channel.appendLine(error);
                     this.debugHandler.log("info", error, true);
                     stringOutput += error;
@@ -55,5 +55,11 @@ export class ProcessController {
         channel.clear();
         channel.show();
         return channel;
+    }
+
+    private stripAnsiSequences(value: string): string {
+        // Handle ANSI escape sequences emitted by CLI tools (e.g. colored output)
+        const ansiRegex = /[\u001B\u009B][[\]()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g;
+        return value.replace(ansiRegex, '');
     }
 }
