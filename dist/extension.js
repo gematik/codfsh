@@ -37,7 +37,7 @@ class SushiController {
     async execute(snapshots) {
         let sushiSettings = this.configHandler.getSushiSettings("Sushi.Settings");
         try {
-            if (sushiSettings.checkPackages == true) {
+            if (sushiSettings.checkPackages === true) {
                 await this.checkDependencies();
             }
             await this.runSushi(snapshots);
@@ -682,6 +682,22 @@ function charFromCodepoint(c) {
   );
 }
 
+// set a property of a literal object, while protecting against prototype pollution,
+// see https://github.com/nodeca/js-yaml/issues/164 for more details
+function setProperty(object, key, value) {
+  // used for this specific key only because Object.defineProperty is slow
+  if (key === '__proto__') {
+    Object.defineProperty(object, key, {
+      configurable: true,
+      enumerable: true,
+      writable: true,
+      value: value
+    });
+  } else {
+    object[key] = value;
+  }
+}
+
 var simpleEscapeCheck = new Array(256); // integer, for fast access
 var simpleEscapeMap = new Array(256);
 for (var i = 0; i < 256; i++) {
@@ -860,7 +876,7 @@ function mergeMappings(state, destination, source, overridableKeys) {
     key = sourceKeys[index];
 
     if (!_hasOwnProperty.call(destination, key)) {
-      destination[key] = source[key];
+      setProperty(destination, key, source[key]);
       overridableKeys[key] = true;
     }
   }
@@ -920,17 +936,7 @@ function storeMappingPair(state, _result, overridableKeys, keyTag, keyNode, valu
       throwError(state, 'duplicated mapping key');
     }
 
-    // used for this specific key only because Object.defineProperty is slow
-    if (keyNode === '__proto__') {
-      Object.defineProperty(_result, keyNode, {
-        configurable: true,
-        enumerable: true,
-        writable: true,
-        value: valueNode
-      });
-    } else {
-      _result[keyNode] = valueNode;
-    }
+    setProperty(_result, keyNode, valueNode);
     delete overridableKeys[keyNode];
   }
 
@@ -4715,12 +4721,12 @@ class ProcessController {
                 channel.appendLine(logCommand);
                 const run = (0, child_process_1.spawn)('sh', ['-c', logCommand]);
                 run.stdout.on('data', (data) => {
-                    const output = data.toString();
+                    const output = this.stripAnsiSequences(data.toString());
                     channel.appendLine(output);
                     stringOutput += output;
                 });
                 run.stderr.on('data', (data) => {
-                    const error = data.toString();
+                    const error = this.stripAnsiSequences(data.toString());
                     channel.appendLine(error);
                     this.debugHandler.log("info", error, true);
                     stringOutput += error;
@@ -4745,6 +4751,11 @@ class ProcessController {
         channel.clear();
         channel.show();
         return channel;
+    }
+    stripAnsiSequences(value) {
+        // Handle ANSI escape sequences emitted by CLI tools (e.g. colored output)
+        const ansiRegex = /[\u001B\u009B][[\]()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g;
+        return value.replace(ansiRegex, '');
     }
 }
 exports.ProcessController = ProcessController;
@@ -5280,7 +5291,7 @@ exports.DebugHandler = DebugHandler;
 /******/ 	
 /************************************************************************/
 var __webpack_exports__ = {};
-// This entry need to be wrapped in an IIFE because it need to be isolated against other modules in the chunk.
+// This entry needs to be wrapped in an IIFE because it needs to be isolated against other modules in the chunk.
 (() => {
 var exports = __webpack_exports__;
 

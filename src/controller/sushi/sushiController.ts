@@ -38,7 +38,7 @@ export class SushiController{
     public async execute(snapshots: boolean) {
         let sushiSettings = this.configHandler.getSushiSettings("Sushi.Settings");
         try {
-            if (sushiSettings.checkPackages == true) {
+            if (sushiSettings.checkPackages === true) {
                 await this.checkDependencies();
             }
             await this.runSushi(snapshots);
