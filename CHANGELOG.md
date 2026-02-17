@@ -6,4 +6,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## [Unreleased]
 
-- Initial release
+-
+## [1.0.12] - 2026-02-16
+
+- Add Sushi config selection when multiple `sushi-config.yml`/`sushi-config.yaml` files exist.

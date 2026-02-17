@@ -18,7 +18,7 @@ const sushiWrapper_1 = __webpack_require__(3);
 const diagnosticController_1 = __webpack_require__(5);
 const sushiOutputParser_1 = __webpack_require__(7);
 const pathController_1 = __webpack_require__(9);
-const configHandler_1 = __webpack_require__(12);
+const configHandler_1 = __webpack_require__(13);
 const dependencyEnsurer_1 = __webpack_require__(41);
 const processController_1 = __webpack_require__(44);
 const dependencyController_1 = __webpack_require__(46);
@@ -301,20 +301,45 @@ class PathController {
     async getSushiConfig() {
         try {
             const files = await this.getFiles(this.getWorkspaceFolder());
-            const sushiConfigFile = files.find(file => file.endsWith("sushi-config.yaml"));
-            if (sushiConfigFile) {
-                return vscode.Uri.file(sushiConfigFile).fsPath;
+            const sushiConfigFiles = files.filter(file => this.isSushiConfig(file));
+            if (sushiConfigFiles.length === 1) {
+                return vscode.Uri.file(sushiConfigFiles[0]).fsPath;
             }
-            else {
-                throw new Error("Unable to find a sushi-config.yaml in the current Workspace.");
+            if (sushiConfigFiles.length > 1) {
+                return await this.pickSushiConfig(sushiConfigFiles);
             }
+            throw new Error("Unable to find a sushi-config.yaml or sushi-config.yml in the current Workspace.");
         }
         catch (error) {
             throw error;
         }
     }
+    async pickSushiConfig(sushiConfigFiles) {
+        const items = sushiConfigFiles.map(file => {
+            const label = (0, path_1.basename)((0, path_1.dirname)(file)) || file;
+            const description = vscode.workspace.asRelativePath(file, false);
+            return { label, description, file };
+        });
+        const selection = await vscode.window.showQuickPick(items, {
+            title: 'Select Sushi config to use',
+            placeHolder: 'Choose an implementation guide folder',
+            ignoreFocusOut: true
+        });
+        if (!selection) {
+            throw new Error('Sushi config selection cancelled.');
+        }
+        const selectedPath = selection.file;
+        this.debugHandler.log('info', `Selected sushi-config: ${selectedPath}`);
+        return vscode.Uri.file(selectedPath).fsPath;
+    }
+    isSushiConfig(file) {
+        return file.endsWith('sushi-config.yaml') || file.endsWith('sushi-config.yml');
+    }
     getResourceFolder(sushiConfigPath) {
-        return sushiConfigPath.replace("sushi-config.yaml", "");
+        if (sushiConfigPath.endsWith('sushi-config.yml')) {
+            return sushiConfigPath.replace('sushi-config.yml', '');
+        }
+        return sushiConfigPath.replace('sushi-config.yaml', '');
     }
     async getFiles(dir, depth = 0) {
         if (depth > 2) {
@@ -367,13 +392,19 @@ module.exports = require("fs/promises");
 
 /***/ }),
 /* 12 */
+/***/ ((module) => {
+
+module.exports = require("fs");
+
+/***/ }),
+/* 13 */
 /***/ ((__unused_webpack_module, exports, __webpack_require__) => {
 
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.ConfigHandler = void 0;
 const vscode = __webpack_require__(1);
-const fs = __webpack_require__(13);
+const fs = __webpack_require__(12);
 const sushiSettings_1 = __webpack_require__(14);
 const os = __webpack_require__(15);
 const yaml = __webpack_require__(16);
@@ -474,12 +505,6 @@ class ConfigHandler {
 }
 exports.ConfigHandler = ConfigHandler;
 
-
-/***/ }),
-/* 13 */
-/***/ ((module) => {
-
-module.exports = require("fs");
 
 /***/ }),
 /* 14 */
@@ -4775,7 +4800,7 @@ module.exports = require("child_process");
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.DependencyController = void 0;
 const vscode = __webpack_require__(1);
-const fs = __webpack_require__(13);
+const fs = __webpack_require__(12);
 const yaml = __webpack_require__(16);
 const path_1 = __webpack_require__(4);
 const dependency_1 = __webpack_require__(42);
@@ -4826,7 +4851,7 @@ const vscode = __webpack_require__(1);
 const diagnosticController_1 = __webpack_require__(5);
 const hapiWrapper_1 = __webpack_require__(48);
 const hapiOutputParser_1 = __webpack_require__(49);
-const configHandler_1 = __webpack_require__(12);
+const configHandler_1 = __webpack_require__(13);
 const fileConnector_1 = __webpack_require__(51);
 const errorHandler_1 = __webpack_require__(53);
 const notificationController_1 = __webpack_require__(43);
@@ -5075,7 +5100,7 @@ exports.ValidationResult = ValidationResult;
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.FileConnector = void 0;
-const fs = __webpack_require__(13);
+const fs = __webpack_require__(12);
 const path_1 = __webpack_require__(4);
 const fshParser_1 = __webpack_require__(52);
 class FileConnector {
@@ -5187,7 +5212,7 @@ exports.ErrorHandler = ErrorHandler;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.FileHandler = void 0;
 const path_1 = __webpack_require__(4);
-const fs = __webpack_require__(13);
+const fs = __webpack_require__(12);
 const util_1 = __webpack_require__(55);
 const readdir = (0, util_1.promisify)(fs.readdir);
 class FileHandler {
