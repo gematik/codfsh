@@ -6,6 +6,15 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-02-19
+
+### Added
+- Add dropdown for selecting multiple Implementation Guides.
+
+### Changed
+- Improve devcontainer setup and README guidance for local setup.
+- Update version metadata.
+
 ## [1.1.0] - 2025-11-25
 
 ### Added
