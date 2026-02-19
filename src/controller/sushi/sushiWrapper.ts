@@ -19,10 +19,13 @@ export class SushiWrapper {
         this.configHandler = configHandler;
     }
 
-    public async getConsoleOutput(ressourceFolderPath : string) : Promise<string>  {
+    public async getConsoleOutput(ressourceFolderPath : string, snapshot: boolean = false) : Promise<string>  {
         return new Promise(async (resolve, reject) => {
             let sushiSettings = this.configHandler.getSushiSettings("Sushi.Settings");
             try{
+                if (snapshot) {
+                    sushiSettings.generateSnapshots = true;
+                } 
                 let output = await this.runSushi(ressourceFolderPath, sushiSettings);
                 resolve(output);
             }

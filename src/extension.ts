@@ -26,7 +26,12 @@ function createControllers(debugHandler: DebugHandler, diagnosticCollection: vsc
 function createSubscriptions(context: vscode.ExtensionContext, diagnosticCollection: vscode.DiagnosticCollection, controllers: { sushiController: SushiController, hapiController: HapiController }) {
     let runSushiSubscription = vscode.commands.registerCommand('codfsh.runSushi', () => {
         diagnosticCollection.clear();
-        controllers.sushiController.execute();
+        controllers.sushiController.execute(false);
+    });
+
+    let runSushiSnapshotSubscription = vscode.commands.registerCommand('codfsh.runSushi.snapshot', () => {
+        diagnosticCollection.clear();
+        controllers.sushiController.execute(true);
     });
 
     let runHapiSubscription = vscode.commands.registerCommand('codfsh.runHapi', () => {
@@ -36,11 +41,12 @@ function createSubscriptions(context: vscode.ExtensionContext, diagnosticCollect
 
     let runFhirFshSubscription = vscode.commands.registerCommand('codfsh.runAll', async () => {
         diagnosticCollection.clear();
-        await controllers.sushiController.execute();
+        await controllers.sushiController.execute(false);
         await controllers.hapiController.executeAll();
     });
 
     context.subscriptions.push(runSushiSubscription);
+    context.subscriptions.push(runSushiSnapshotSubscription);
     context.subscriptions.push(runHapiSubscription);
     context.subscriptions.push(runFhirFshSubscription);
 }

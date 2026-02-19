@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { DebugHandler } from './debugHandler';
-import { resolve } from 'path';
+import { basename, dirname, resolve } from 'path';
 import { PathValues } from '../models/pathValues';
 import { readdir } from 'fs/promises';
 
@@ -26,19 +26,50 @@ export class PathController {
     private async getSushiConfig(): Promise<string> {
         try {
             const files = await this.getFiles(this.getWorkspaceFolder());
-            const sushiConfigFile = files.find(file => file.endsWith("sushi-config.yaml"));
-            if (sushiConfigFile) {
-                return vscode.Uri.file(sushiConfigFile).fsPath;
-            } else {
-                throw new Error("Unable to find a sushi-config.yaml in the current Workspace.");
+            const sushiConfigFiles = files.filter(file => this.isSushiConfig(file));
+            if (sushiConfigFiles.length === 1) {
+                return vscode.Uri.file(sushiConfigFiles[0]).fsPath;
             }
+            if (sushiConfigFiles.length > 1) {
+                return await this.pickSushiConfig(sushiConfigFiles);
+            }
+            throw new Error("Unable to find a sushi-config.yaml or sushi-config.yml in the current Workspace.");
         } catch (error) {
             throw error;
         }
     }
 
+    private async pickSushiConfig(sushiConfigFiles: string[]): Promise<string> {
+        const items = sushiConfigFiles.map(file => {
+            const label = basename(dirname(file)) || file;
+            const description = vscode.workspace.asRelativePath(file, false);
+            return { label, description, file };
+        });
+
+        const selection = await vscode.window.showQuickPick(items, {
+            title: 'Select Sushi config to use',
+            placeHolder: 'Choose an implementation guide folder',
+            ignoreFocusOut: true
+        });
+
+        if (!selection) {
+            throw new Error('Sushi config selection cancelled.');
+        }
+
+        const selectedPath = selection.file;
+        this.debugHandler.log('info', `Selected sushi-config: ${selectedPath}`);
+        return vscode.Uri.file(selectedPath).fsPath;
+    }
+
+    private isSushiConfig(file: string): boolean {
+        return file.endsWith('sushi-config.yaml') || file.endsWith('sushi-config.yml');
+    }
+
     private getResourceFolder(sushiConfigPath: string): string {
-        return sushiConfigPath.replace("sushi-config.yaml", "");
+        if (sushiConfigPath.endsWith('sushi-config.yml')) {
+            return sushiConfigPath.replace('sushi-config.yml', '');
+        }
+        return sushiConfigPath.replace('sushi-config.yaml', '');
     }
 
     private async getFiles(dir: string, depth: number = 0): Promise<string[]> {

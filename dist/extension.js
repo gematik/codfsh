@@ -18,7 +18,7 @@ const sushiWrapper_1 = __webpack_require__(3);
 const diagnosticController_1 = __webpack_require__(5);
 const sushiOutputParser_1 = __webpack_require__(7);
 const pathController_1 = __webpack_require__(9);
-const configHandler_1 = __webpack_require__(12);
+const configHandler_1 = __webpack_require__(13);
 const dependencyEnsurer_1 = __webpack_require__(41);
 const processController_1 = __webpack_require__(44);
 const dependencyController_1 = __webpack_require__(46);
@@ -34,10 +34,13 @@ class SushiController {
         this.dependencyController = new dependencyController_1.DependencyController(this.debugHandler, this.pathController);
         this.dependencyEnsurer = new dependencyEnsurer_1.DependencyEnsurer(this.debugHandler, this.processController);
     }
-    async execute() {
+    async execute(snapshots) {
+        let sushiSettings = this.configHandler.getSushiSettings("Sushi.Settings");
         try {
-            await this.checkDependencies();
-            await this.runSushi();
+            if (sushiSettings.checkPackages === true) {
+                await this.checkDependencies();
+            }
+            await this.runSushi(snapshots);
         }
         catch (error) {
             this.debugHandler.log("error", error, true);
@@ -50,9 +53,9 @@ class SushiController {
         await this.dependencyEnsurer.installMissingDependencies(neededDependencies);
         this.debugHandler.log("info", "All FHIR Packages Dependencies checked.", true);
     }
-    async runSushi() {
+    async runSushi(snapshot = false) {
         this.debugHandler.log("info", "Started Sushi...", true);
-        const consoleOutput = await this.getConsoleOutput();
+        const consoleOutput = await this.getConsoleOutput(snapshot);
         var diagnostics = this.sushiOutputParser.getDiagnostics(consoleOutput);
         this.addDiagnostics(diagnostics);
         this.debugHandler.log("info", "Sushi completed.", true);
@@ -60,9 +63,9 @@ class SushiController {
     addDiagnostics(diagnostics) {
         this.diagnosticController.addDiagnostics(diagnostics);
     }
-    async getConsoleOutput() {
+    async getConsoleOutput(snapshot = false) {
         const pathValues = await this.pathController.getPathVariables();
-        const consoleOutput = await this.sushiWrapper.getConsoleOutput(pathValues.ressourceFolderPath);
+        const consoleOutput = await this.sushiWrapper.getConsoleOutput(pathValues.ressourceFolderPath, snapshot);
         return consoleOutput;
     }
 }
@@ -84,10 +87,13 @@ class SushiWrapper {
         this.processController = processController;
         this.configHandler = configHandler;
     }
-    async getConsoleOutput(ressourceFolderPath) {
+    async getConsoleOutput(ressourceFolderPath, snapshot = false) {
         return new Promise(async (resolve, reject) => {
             let sushiSettings = this.configHandler.getSushiSettings("Sushi.Settings");
             try {
+                if (snapshot) {
+                    sushiSettings.generateSnapshots = true;
+                }
                 let output = await this.runSushi(ressourceFolderPath, sushiSettings);
                 resolve(output);
             }
@@ -295,20 +301,45 @@ class PathController {
     async getSushiConfig() {
         try {
             const files = await this.getFiles(this.getWorkspaceFolder());
-            const sushiConfigFile = files.find(file => file.endsWith("sushi-config.yaml"));
-            if (sushiConfigFile) {
-                return vscode.Uri.file(sushiConfigFile).fsPath;
+            const sushiConfigFiles = files.filter(file => this.isSushiConfig(file));
+            if (sushiConfigFiles.length === 1) {
+                return vscode.Uri.file(sushiConfigFiles[0]).fsPath;
             }
-            else {
-                throw new Error("Unable to find a sushi-config.yaml in the current Workspace.");
+            if (sushiConfigFiles.length > 1) {
+                return await this.pickSushiConfig(sushiConfigFiles);
             }
+            throw new Error("Unable to find a sushi-config.yaml or sushi-config.yml in the current Workspace.");
         }
         catch (error) {
             throw error;
         }
     }
+    async pickSushiConfig(sushiConfigFiles) {
+        const items = sushiConfigFiles.map(file => {
+            const label = (0, path_1.basename)((0, path_1.dirname)(file)) || file;
+            const description = vscode.workspace.asRelativePath(file, false);
+            return { label, description, file };
+        });
+        const selection = await vscode.window.showQuickPick(items, {
+            title: 'Select Sushi config to use',
+            placeHolder: 'Choose an implementation guide folder',
+            ignoreFocusOut: true
+        });
+        if (!selection) {
+            throw new Error('Sushi config selection cancelled.');
+        }
+        const selectedPath = selection.file;
+        this.debugHandler.log('info', `Selected sushi-config: ${selectedPath}`);
+        return vscode.Uri.file(selectedPath).fsPath;
+    }
+    isSushiConfig(file) {
+        return file.endsWith('sushi-config.yaml') || file.endsWith('sushi-config.yml');
+    }
     getResourceFolder(sushiConfigPath) {
-        return sushiConfigPath.replace("sushi-config.yaml", "");
+        if (sushiConfigPath.endsWith('sushi-config.yml')) {
+            return sushiConfigPath.replace('sushi-config.yml', '');
+        }
+        return sushiConfigPath.replace('sushi-config.yaml', '');
     }
     async getFiles(dir, depth = 0) {
         if (depth > 2) {
@@ -361,13 +392,19 @@ module.exports = require("fs/promises");
 
 /***/ }),
 /* 12 */
+/***/ ((module) => {
+
+module.exports = require("fs");
+
+/***/ }),
+/* 13 */
 /***/ ((__unused_webpack_module, exports, __webpack_require__) => {
 
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.ConfigHandler = void 0;
 const vscode = __webpack_require__(1);
-const fs = __webpack_require__(13);
+const fs = __webpack_require__(12);
 const sushiSettings_1 = __webpack_require__(14);
 const os = __webpack_require__(15);
 const yaml = __webpack_require__(16);
@@ -386,8 +423,10 @@ class ConfigHandler {
     getSushiSettings(section) {
         let config = this.getActualConfiguration();
         let buildSnapshots = config.get(section + '.BuildSnapshots');
+        let checkPackages = config.get(section + '.CheckPackages');
         buildSnapshots = this.isSectionDefined(buildSnapshots, section + '.BuildSnapshots');
-        return new sushiSettings_1.SushiSettings(buildSnapshots);
+        checkPackages = this.isSectionDefined(checkPackages, section + '.CheckPackages');
+        return new sushiSettings_1.SushiSettings(buildSnapshots, checkPackages);
     }
     getHapiParameters(section) {
         // Get settings from yaml file
@@ -468,12 +507,6 @@ exports.ConfigHandler = ConfigHandler;
 
 
 /***/ }),
-/* 13 */
-/***/ ((module) => {
-
-module.exports = require("fs");
-
-/***/ }),
 /* 14 */
 /***/ ((__unused_webpack_module, exports) => {
 
@@ -481,8 +514,9 @@ module.exports = require("fs");
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.SushiSettings = void 0;
 class SushiSettings {
-    constructor(generateSnapshots) {
+    constructor(generateSnapshots, checkPackages) {
         this.generateSnapshots = generateSnapshots;
+        this.checkPackages = checkPackages;
     }
 }
 exports.SushiSettings = SushiSettings;
@@ -673,6 +707,22 @@ function charFromCodepoint(c) {
   );
 }
 
+// set a property of a literal object, while protecting against prototype pollution,
+// see https://github.com/nodeca/js-yaml/issues/164 for more details
+function setProperty(object, key, value) {
+  // used for this specific key only because Object.defineProperty is slow
+  if (key === '__proto__') {
+    Object.defineProperty(object, key, {
+      configurable: true,
+      enumerable: true,
+      writable: true,
+      value: value
+    });
+  } else {
+    object[key] = value;
+  }
+}
+
 var simpleEscapeCheck = new Array(256); // integer, for fast access
 var simpleEscapeMap = new Array(256);
 for (var i = 0; i < 256; i++) {
@@ -851,7 +901,7 @@ function mergeMappings(state, destination, source, overridableKeys) {
     key = sourceKeys[index];
 
     if (!_hasOwnProperty.call(destination, key)) {
-      destination[key] = source[key];
+      setProperty(destination, key, source[key]);
       overridableKeys[key] = true;
     }
   }
@@ -911,17 +961,7 @@ function storeMappingPair(state, _result, overridableKeys, keyTag, keyNode, valu
       throwError(state, 'duplicated mapping key');
     }
 
-    // used for this specific key only because Object.defineProperty is slow
-    if (keyNode === '__proto__') {
-      Object.defineProperty(_result, keyNode, {
-        configurable: true,
-        enumerable: true,
-        writable: true,
-        value: valueNode
-      });
-    } else {
-      _result[keyNode] = valueNode;
-    }
+    setProperty(_result, keyNode, valueNode);
     delete overridableKeys[keyNode];
   }
 
@@ -4706,12 +4746,12 @@ class ProcessController {
                 channel.appendLine(logCommand);
                 const run = (0, child_process_1.spawn)('sh', ['-c', logCommand]);
                 run.stdout.on('data', (data) => {
-                    const output = data.toString();
+                    const output = this.stripAnsiSequences(data.toString());
                     channel.appendLine(output);
                     stringOutput += output;
                 });
                 run.stderr.on('data', (data) => {
-                    const error = data.toString();
+                    const error = this.stripAnsiSequences(data.toString());
                     channel.appendLine(error);
                     this.debugHandler.log("info", error, true);
                     stringOutput += error;
@@ -4737,6 +4777,11 @@ class ProcessController {
         channel.show();
         return channel;
     }
+    stripAnsiSequences(value) {
+        // Handle ANSI escape sequences emitted by CLI tools (e.g. colored output)
+        const ansiRegex = /[\u001B\u009B][[\]()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g;
+        return value.replace(ansiRegex, '');
+    }
 }
 exports.ProcessController = ProcessController;
 
@@ -4755,7 +4800,7 @@ module.exports = require("child_process");
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.DependencyController = void 0;
 const vscode = __webpack_require__(1);
-const fs = __webpack_require__(13);
+const fs = __webpack_require__(12);
 const yaml = __webpack_require__(16);
 const path_1 = __webpack_require__(4);
 const dependency_1 = __webpack_require__(42);
@@ -4806,7 +4851,7 @@ const vscode = __webpack_require__(1);
 const diagnosticController_1 = __webpack_require__(5);
 const hapiWrapper_1 = __webpack_require__(48);
 const hapiOutputParser_1 = __webpack_require__(49);
-const configHandler_1 = __webpack_require__(12);
+const configHandler_1 = __webpack_require__(13);
 const fileConnector_1 = __webpack_require__(51);
 const errorHandler_1 = __webpack_require__(53);
 const notificationController_1 = __webpack_require__(43);
@@ -5055,7 +5100,7 @@ exports.ValidationResult = ValidationResult;
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.FileConnector = void 0;
-const fs = __webpack_require__(13);
+const fs = __webpack_require__(12);
 const path_1 = __webpack_require__(4);
 const fshParser_1 = __webpack_require__(52);
 class FileConnector {
@@ -5167,7 +5212,7 @@ exports.ErrorHandler = ErrorHandler;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.FileHandler = void 0;
 const path_1 = __webpack_require__(4);
-const fs = __webpack_require__(13);
+const fs = __webpack_require__(12);
 const util_1 = __webpack_require__(55);
 const readdir = (0, util_1.promisify)(fs.readdir);
 class FileHandler {
@@ -5271,7 +5316,7 @@ exports.DebugHandler = DebugHandler;
 /******/ 	
 /************************************************************************/
 var __webpack_exports__ = {};
-// This entry need to be wrapped in an IIFE because it need to be isolated against other modules in the chunk.
+// This entry needs to be wrapped in an IIFE because it needs to be isolated against other modules in the chunk.
 (() => {
 var exports = __webpack_exports__;
 
@@ -5302,7 +5347,11 @@ function createControllers(debugHandler, diagnosticCollection) {
 function createSubscriptions(context, diagnosticCollection, controllers) {
     let runSushiSubscription = vscode.commands.registerCommand('codfsh.runSushi', () => {
         diagnosticCollection.clear();
-        controllers.sushiController.execute();
+        controllers.sushiController.execute(false);
+    });
+    let runSushiSnapshotSubscription = vscode.commands.registerCommand('codfsh.runSushi.snapshot', () => {
+        diagnosticCollection.clear();
+        controllers.sushiController.execute(true);
     });
     let runHapiSubscription = vscode.commands.registerCommand('codfsh.runHapi', () => {
         diagnosticCollection.clear();
@@ -5310,10 +5359,11 @@ function createSubscriptions(context, diagnosticCollection, controllers) {
     });
     let runFhirFshSubscription = vscode.commands.registerCommand('codfsh.runAll', async () => {
         diagnosticCollection.clear();
-        await controllers.sushiController.execute();
+        await controllers.sushiController.execute(false);
         await controllers.hapiController.executeAll();
     });
     context.subscriptions.push(runSushiSubscription);
+    context.subscriptions.push(runSushiSnapshotSubscription);
     context.subscriptions.push(runHapiSubscription);
     context.subscriptions.push(runFhirFshSubscription);
 }

@@ -1,6 +1,50 @@
+<img align="right" width="250" height="47" src="images/Gematik_Logo_Flag_With_Background.png"/> <br/>
+
 # codfsh extension README
 
+<details>
+  <summary>Table of Contents</summary>
+  <ol>
+    <li>
+      <a href="#about-the-project">About The Project</a>
+       <ul>
+        <li><a href="#release-notes">Release Notes</a></li>
+      </ul>
+    </li>
+    <li>
+      <a href="#features">Features</a>
+      <ul>
+        <li><a href="#execute-sushi-shorthand">Execute Sushi Shorthand</a></li>
+        <li><a href="#execute-hapi-validator">Execute Hapi Validator</a></li>
+        <li><a href="##install-missing-fhir-packages-from-your-sushi-configyaml">Install missing FHIR Packages from your sushi-config.yaml</a></li>
+      </ul>
+    </li>
+    <li>
+      <a href="#requirements">Requirements</a>
+       <ul>
+        <li><a href="#install-java-jre">Install Java JRE</a></li>
+        <li><a href="#install-dotnet-sdk">Install dotnet SDK</a></li>
+        <li><a href="#install-npm">Install npm</a></li>
+        <li><a href="#install-sushi-shorthand">Install Sushi Shorthand</a></li>
+        <li><a href="#install-firelyterminal-optional">Install firely.terminal (optional)</a></li>
+        <li><a href="#download-hapi-fhir-validator">Download HAPI FHIR validator</a></li>
+      </ul>
+    </li>
+    <li>
+      <a href="#extension-settings">Extension Settings</a>
+      <ul>
+        <li><a href="#configuring-additional-parameters-for-hapi-validator">Configuring Additional Parameters for HAPI Validator</a></li>
+      </ul>
+    </li>
+  </ol>
+</details>
+
+## About The Project
 This extension wraps SUSHI (FHIR Shorthand) and the HAPI Validator, providing comprehensive warning and error messages. It allows you to "run" your .fsh shorthand files to both generate FHIR .json files and validate them simultaneously.
+
+### Release Notes
+
+See [CHANGELOG.md](./CHANGELOG.md) for all information regarding the (newest) releases.
 
 ## Features
 
@@ -11,10 +55,11 @@ Key features are the commands to run SUSHI and/or Hapi validator via `CTRL`+`Shi
 ### Execute Sushi Shorthand
 
 Execute SUSHI Shorthand with `Run Sushi` command to get line-based error or warning messages in the Problems tab of your terminal.
+Execute SUSHI Shorthand with `Run Sushi with Snapshots` command to run sushi with the `--snapshot` option.
 
 ![sushi Errors Example][errorImage]
 
-> Tip: You can bind a key to execute SUSHI Shorthand. We recommend you use 'F5' to run SUSHI.
+> Tip: You can bind a key to execute SUSHI Shorthand. We recommend you use 'F5' to run SUSHI and 'F6' to run SUSHI with snapshots.
 
 ### Execute Hapi Validator
 
@@ -77,7 +122,7 @@ The extension supports additional parameter configuration for HAPI Validator. Th
 
 1. **Via the settings file:** The settings file is specified in your configuration under the `codfsh.HapiValidator.Settings.SettingsFile` key. The parameters should be specified under the `hapi_parameters` section in this YAML file. Each parameter should be a key-value pair. If a parameter doesn't require a value, you can set it as `true`. Here is an example:
 ```
-    hapi_parameters: 
+    hapi_parameters:
       jurisdiction: DE
       locale: de-DE
       tx: n/a
