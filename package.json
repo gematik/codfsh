@@ -18,7 +18,8 @@
   "activationEvents": [
     "onLanguage:json",
     "onLanguage:fsh",
-    "workspaceContains:**/sushi-config.yaml"
+    "workspaceContains:**/sushi-config.yaml",
+    "workspaceContains:**/sushi-config.yml"
   ],
   "main": "./dist/extension.js",
   "contributes": {
