@@ -6,7 +6,16 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## [Unreleased]
 
--
+## [1.1.0] - 2025-11-25
+
+### Added
+- ANSI color rendering support for better output visualization
+- Updated dependencies for improved stability
+
+### Changed
+- Updated testing dependencies
+- Improved .gitignore configuration
+
 ## [1.0.12] - 2026-02-16
 
 - Add Sushi config selection when multiple `sushi-config.yml`/`sushi-config.yaml` files exist.
